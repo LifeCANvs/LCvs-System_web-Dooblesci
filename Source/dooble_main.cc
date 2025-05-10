@@ -26,9 +26,7 @@
 */
 
 #include <QDir>
-#include <QElapsedTimer>
 #include <QSplashScreen>
-#include <QWebEngineCookieStore>
 #include <QWebEngineProfile>
 #include <QWebEngineSettings>
 #if (QT_VERSION >= QT_VERSION_CHECK(5, 12, 0))
@@ -95,32 +93,39 @@ int main(int argc, char *argv[])
   qputenv("QV4_FORCE_INTERPRETER", "1");
 
   QList<QUrl> urls;
+  QString screen_mode("");
   auto attach = false;
-  auto full_screen = false;
+  auto disable_javascript = false;
   auto test_aes = false;
   auto test_aes_performance = false;
   auto test_threefish = false;
   auto test_threefish_performance = false;
+  int reload_periodically = -1;
 
   for(int i = 1; i < argc; i++)
     if(argv && argv[i])
       {
 	if(strcmp(argv[i], "--attach") == 0)
 	  attach = true;
+	else if(strcmp(argv[i], "--disable-javascript") == 0)
+	  disable_javascript = true;
 	else if(strcmp(argv[i], "--executable-current-url") == 0)
 	  i += 1;
 	else if(strcmp(argv[i], "--full-screen") == 0)
-	  full_screen = true;
+	  screen_mode = "full-screen";
 	else if(strcmp(argv[i], "--help") == 0)
 	  {
 	    qDebug() << "Dooble";
 	    qDebug() << " --attach";
+	    qDebug() << " --disable-javascript";
 	    qDebug() << " --executable-current-url PROGRAM";
 	    qDebug() << " --full-screen";
 	    qDebug() << " --help";
 	    qDebug() << " --listen";
 	    qDebug() << " --load-url URL";
+	    qDebug() << " --normal-screen";
 	    qDebug() << " --private";
+	    qDebug() << " --reload-periodically 15, 30, 45, 60";
 	    qDebug() << " --test-aes";
 	    qDebug() << " --test-aes-performance";
 	    qDebug() << " --test-threefish";
@@ -133,10 +138,35 @@ int main(int argc, char *argv[])
 
 	    if(argc > i && argv[i])
 	      {
-		QUrl url(QUrl::fromUserInput(argv[i]));
+		auto url(QUrl::fromUserInput(argv[i]));
+
+		if(url.isValid() == false)
+		  {
+		    QFileInfo const file_info(argv[i]);
+
+		    if(file_info.isReadable())
+		      url = QUrl::fromUserInput(file_info.absoluteFilePath());
+		  }
+		else if(url.scheme() == "http")
+		  url.setScheme("https");
 
 		if(dooble_ui_utilities::allowed_url_scheme(url))
 		  urls << url;
+	      }
+	  }
+	else if(strcmp(argv[i], "--normal-screen") == 0)
+	  screen_mode = "normal-screen";
+	else if(strcmp(argv[i], "--reload-periodically") == 0)
+	  {
+	    i += 1;
+
+	    if(argc > i && argv[i])
+	      {
+		QString const a(argv[i]);
+		auto ok = false;
+
+		reload_periodically = a.toInt(&ok);
+		reload_periodically = ok ? reload_periodically : -1;
 	      }
 	  }
 	else if(strcmp(argv[i], "--test-aes") == 0)
@@ -147,9 +177,21 @@ int main(int argc, char *argv[])
 	  test_threefish = true;
 	else if(strcmp(argv[i], "--test-threefish-performance") == 0)
 	  test_threefish_performance = true;
+	else if(strcmp(argv[i], "-style") == 0)
+	  i += 1;
 	else
 	  {
-	    QUrl url(QUrl::fromUserInput(argv[i]));
+	    auto url(QUrl::fromUserInput(argv[i]));
+
+	    if(url.isValid() == false)
+	      {
+		QFileInfo const file_info(argv[i]);
+
+		if(file_info.isReadable())
+		  url = QUrl::fromUserInput(file_info.absoluteFilePath());
+	      }
+	    else if(url.scheme() == "http")
+	      url.setScheme("https");
 
 	    if(dooble_ui_utilities::allowed_url_scheme(url))
 	      urls << url;
@@ -282,8 +324,9 @@ int main(int argc, char *argv[])
 #endif
   QString dooble_settings_path("");
   dooble::s_application = new dooble_application(argc, argv);
+
 #if defined(Q_OS_WINDOWS)
-  auto bytes(qgetenv("DOOBLE_HOME").trimmed());
+  auto const bytes(qgetenv("DOOBLE_HOME").trimmed());
 
   if(bytes.isEmpty())
     {
@@ -326,13 +369,13 @@ int main(int argc, char *argv[])
       dooble_settings::set_setting("home_path", dooble_settings_path = bytes);
     }
 #else
-  auto bytes(qgetenv("DOOBLE_HOME").trimmed());
+  auto const bytes(qgetenv("DOOBLE_HOME").trimmed());
 
   if(bytes.isEmpty())
     {
       QString dooble_directory(".dooble");
-      auto xdg_config_home(qgetenv("XDG_CONFIG_HOME").trimmed());
-      auto xdg_data_home(qgetenv("XDG_DATA_HOME").trimmed());
+      auto const xdg_config_home(qgetenv("XDG_CONFIG_HOME").trimmed());
+      auto const xdg_data_home(qgetenv("XDG_DATA_HOME").trimmed());
 
       if(xdg_config_home.isEmpty() && xdg_data_home.isEmpty())
 	{
@@ -370,20 +413,32 @@ int main(int argc, char *argv[])
     }
 #endif
 
+  dooble::s_application->install_translator();
   dooble_settings::prepare_web_engine_environment_variables();
+  dooble::s_default_web_engine_profile = new QWebEngineProfile("Dooble");
+#if (QT_VERSION >= QT_VERSION_CHECK(6, 6, 0))
+  dooble::s_default_web_engine_profile->settings()->setAttribute
+    (QWebEngineSettings::ReadingFromCanvasEnabled,
+     dooble_settings::reading_from_canvas_enabled());
+#endif
+  dooble::s_default_http_user_agent = dooble::s_default_web_engine_profile->
+    httpUserAgent();
+  dooble::s_settings = new dooble_settings();
+  dooble::s_settings->set_settings_path(dooble_settings_path);
 
   /*
   ** Create a splash screen.
   */
 
   QSplashScreen splash;
-  auto splash_screen = dooble_settings::setting
+
+  dooble::s_settings->prepare_application_fonts();
+
+  auto const splash_screen = dooble_settings::setting
     ("splash_screen", true).toBool();
 
   if(splash_screen)
     {
-      QElapsedTimer t;
-
       splash.setEnabled(false);
       splash.setPixmap(QPixmap(":/Miscellaneous/splash.png"));
       splash.show();
@@ -391,14 +446,14 @@ int main(int argc, char *argv[])
 	(QObject::tr("Initializing Dooble's random number generator."),
 	 Qt::AlignBottom | Qt::AlignHCenter,
 	 QColor(Qt::white));
-      t.start();
-
-      while(t.elapsed() < 500)
-	splash.repaint();
+      splash.repaint();
+      dooble::s_application->processEvents();
     }
 
   dooble_random::initialize();
-  dooble::s_application->processEvents();
+
+  if(splash_screen)
+    dooble::s_application->processEvents();
 
 #ifdef Q_OS_MACOS
   /*
@@ -407,7 +462,6 @@ int main(int argc, char *argv[])
 
   CocoaInitializer cocoa_initializer;
 #endif
-  dooble::s_application->install_translator();
 
   if(splash_screen)
     {
@@ -432,20 +486,20 @@ int main(int argc, char *argv[])
       dooble::s_application->processEvents();
     }
 
-  QWebEngineProfile::defaultProfile()->setCachePath
+  dooble::s_default_web_engine_profile->setCachePath
     (dooble_settings::setting("home_path").toString() +
      QDir::separator() +
      "WebEngineCache");
-  QWebEngineProfile::defaultProfile()->setHttpCacheMaximumSize(0);
-  QWebEngineProfile::defaultProfile()->setHttpCacheType
+  dooble::s_default_web_engine_profile->setHttpCacheMaximumSize(0);
+  dooble::s_default_web_engine_profile->setHttpCacheType
     (QWebEngineProfile::MemoryHttpCache);
-  QWebEngineProfile::defaultProfile()->setPersistentCookiesPolicy
+  dooble::s_default_web_engine_profile->setPersistentCookiesPolicy
     (QWebEngineProfile::NoPersistentCookies);
-  QWebEngineProfile::defaultProfile()->setPersistentStoragePath
+  dooble::s_default_web_engine_profile->setPersistentStoragePath
     (dooble_settings::setting("home_path").toString() +
      QDir::separator() +
      "WebEnginePersistentStorage");
-  QWebEngineProfile::defaultProfile()->setSpellCheckEnabled(true);
+  dooble::s_default_web_engine_profile->setSpellCheckEnabled(true);
 #if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
   QWebEngineSettings::defaultSettings()->setAttribute
     (QWebEngineSettings::ErrorPageEnabled, true);
@@ -466,22 +520,20 @@ int main(int argc, char *argv[])
     (QWebEngineSettings::WebRTCPublicInterfacesOnly, true);
 #endif
 #else
-  QWebEngineProfile::defaultProfile()->settings()->setAttribute
+  dooble::s_default_web_engine_profile->settings()->setAttribute
     (QWebEngineSettings::ErrorPageEnabled, true);
-  QWebEngineProfile::defaultProfile()->settings()->setAttribute
+  dooble::s_default_web_engine_profile->settings()->setAttribute
     (QWebEngineSettings::FocusOnNavigationEnabled, true);
-  QWebEngineProfile::defaultProfile()->settings()->setAttribute
+  dooble::s_default_web_engine_profile->settings()->setAttribute
     (QWebEngineSettings::FullScreenSupportEnabled, true);
-  QWebEngineProfile::defaultProfile()->settings()->setAttribute
+  dooble::s_default_web_engine_profile->settings()->setAttribute
     (QWebEngineSettings::JavascriptCanOpenWindows, true);
-  QWebEngineProfile::defaultProfile()->settings()->setAttribute
+  dooble::s_default_web_engine_profile->settings()->setAttribute
     (QWebEngineSettings::LocalContentCanAccessFileUrls, false);
-  QWebEngineProfile::defaultProfile()->settings()->setAttribute
-    (QWebEngineSettings::LocalStorageEnabled, true);
-  QWebEngineProfile::defaultProfile()->settings()->setAttribute
+  dooble::s_default_web_engine_profile->settings()->setAttribute
     (QWebEngineSettings::ScreenCaptureEnabled, false);
 #ifndef DOOBLE_FREEBSD_WEBENGINE_MISMATCH
-  QWebEngineProfile::defaultProfile()->settings()->setAttribute
+  dooble::s_default_web_engine_profile->settings()->setAttribute
     (QWebEngineSettings::WebRTCPublicInterfacesOnly, true);
 #endif
 #endif
@@ -495,22 +547,19 @@ int main(int argc, char *argv[])
       dooble::s_application->processEvents();
     }
 
-  dooble::s_default_http_user_agent = QWebEngineProfile::defaultProfile()->
-    httpUserAgent();
-  dooble::s_settings = new dooble_settings();
-  dooble::s_settings->set_settings_path(dooble_settings_path);
-
-  auto arguments(QCoreApplication::arguments());
-  auto d = new dooble // Not deleted.
+  auto const arguments(QCoreApplication::arguments());
+  auto d = new dooble // Deleted during exit.
     (urls,
-     arguments.contains("--private") ||
-     dooble::s_settings->setting("private_mode").toBool(),
-     attach);
+     attach,
+     disable_javascript,
+     arguments.contains("--private") || dooble::s_settings->
+                                        setting("private_mode").toBool(),
+     reload_periodically);
 
   if(attach && d->attached())
     {
       d->close();
-      return 0;
+      return EXIT_SUCCESS;
     }
 
   dooble::s_google_translate_url = qgetenv
@@ -519,11 +568,12 @@ int main(int argc, char *argv[])
     "https://%1.translate.goog/"
     "%2?_x_tr_sl=auto&_x_tr_tl=%3&_x_tr_hl=%3&_x_tr_pto=wapp" :
     dooble::s_google_translate_url;
-  QObject::connect(QWebEngineProfile::defaultProfile()->cookieStore(),
+  dooble::s_settings->prepare_application_fonts();
+  QObject::connect(dooble::s_default_web_engine_profile->cookieStore(),
 		   SIGNAL(cookieAdded(const QNetworkCookie &)),
 		   dooble::s_cookies,
 		   SLOT(slot_cookie_added(const QNetworkCookie &)));
-  QObject::connect(QWebEngineProfile::defaultProfile()->cookieStore(),
+  QObject::connect(dooble::s_default_web_engine_profile->cookieStore(),
 		   SIGNAL(cookieRemoved(const QNetworkCookie &)),
 		   dooble::s_cookies,
 		   SLOT(slot_cookie_removed(const QNetworkCookie &)));
@@ -615,12 +665,14 @@ int main(int argc, char *argv[])
       splash.finish(d);
     }
 
-  if(!full_screen)
-    QTimer::singleShot(0, d, SLOT(show(void)));
-  else
+  if(screen_mode == "full-screen")
     QTimer::singleShot(0, d, SLOT(showFullScreen(void)));
+  else if(screen_mode == "normal-screen")
+    QTimer::singleShot(0, d, SLOT(showNormal(void)));
+  else
+    QTimer::singleShot(0, d, SLOT(show(void)));
 
-  auto rc = dooble::s_application->exec();
+  auto const rc = dooble::s_application->exec();
 
   dooble::clean();
   return static_cast<int> (rc);

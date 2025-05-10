@@ -31,6 +31,11 @@
 #include <QPointer>
 #include <QShortcut>
 #include <QTimer>
+#if (QT_VERSION < QT_VERSION_CHECK(6, 8, 0))
+#include <QWebEnginePage>
+#else
+#include <QWebEnginePermission>
+#endif
 #include <QWebEngineView>
 
 class dooble_web_engine_page;
@@ -47,9 +52,16 @@ class dooble_web_engine_view: public QWebEngineView
   bool is_private(void) const;
   void download(const QString &file_name, const QUrl &url);
   void save(const QString &file_name);
+#if (QT_VERSION < QT_VERSION_CHECK(6, 8, 0))
   void set_feature_permission(const QUrl &security_origin,
-			      QWebEnginePage::Feature feature,
-			      QWebEnginePage::PermissionPolicy policy);
+			      const QWebEnginePage::Feature feature,
+			      const QWebEnginePage::PermissionPolicy policy);
+#else
+  void set_feature_permission
+    (const QUrl &security_origin,
+     const QWebEnginePermission::PermissionType feature,
+     const QWebEnginePermission::State policy);
+#endif
 
  protected:
   QSize sizeHint(void) const;
@@ -93,10 +105,14 @@ class dooble_web_engine_view: public QWebEngineView
 #else
   void downloadRequested(QWebEngineDownloadRequest *download);
 #endif
+#if (QT_VERSION < QT_VERSION_CHECK(6, 8, 0))
   void featurePermissionRequestCanceled(const QUrl &security_origin,
 					QWebEnginePage::Feature feature);
   void featurePermissionRequested(const QUrl &security_origin,
 				  QWebEnginePage::Feature feature);
+#else
+  void permissionRequested(QWebEnginePermission permission);
+#endif
   void open_link_in_current_page(const QUrl &url);
   void open_link_in_new_private_window(const QUrl &url);
   void open_link_in_new_tab(const QUrl &url);

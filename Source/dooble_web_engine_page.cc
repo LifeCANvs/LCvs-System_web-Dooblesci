@@ -54,7 +54,7 @@ dooble_web_engine_page::dooble_web_engine_page
 }
 
 dooble_web_engine_page::dooble_web_engine_page(QWidget *parent):
-  QWebEnginePage(parent)
+  QWebEnginePage(dooble::s_default_web_engine_profile, parent)
 {
   m_certificate_error_url = QUrl();
   m_is_private = false;
@@ -89,6 +89,13 @@ QStringList dooble_web_engine_page::chooseFiles
 	return QFileDialog::getOpenFileNames
 	  (view(), tr("Select Files"), QDir::homePath());
       }
+#if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
+    case QWebEnginePage::FileSelectSave:
+      {
+	return QStringList() << QFileDialog::getSaveFileName
+	  (view(), tr("Save File"), QDir::homePath(), old_files.value(0));
+      }
+#endif
 #if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
     case QWebEnginePage::FileSelectUploadFolder:
       {
@@ -129,9 +136,9 @@ bool dooble_web_engine_page::acceptNavigationRequest(const QUrl &url,
   Q_UNUSED(is_main_frame);
   Q_UNUSED(type);
 
-  auto host(url.host());
-  auto mode
+  auto const mode
     (dooble_settings::setting("accepted_or_blocked_domains_mode").toString());
+  auto host(url.host());
   auto state = true;
   int index = -1;
 
@@ -156,7 +163,8 @@ bool dooble_web_engine_page::certificateError
 {
   if(certificate_error.isOverridable())
     {
-      auto url(dooble_ui_utilities::simplified_url(certificate_error.url()));
+      auto const url
+	(dooble_ui_utilities::simplified_url(certificate_error.url()));
 
       if(m_is_private)
 	if(profile()->property(("certificate_exception_" + url.toString()).
@@ -249,7 +257,8 @@ bool dooble_web_engine_page::certificateError
 	  if(layout->itemAt(i) && layout->itemAt(i)->widget())
 	    layout->itemAt(i)->widget()->setVisible(false);
 
-      auto url(dooble_ui_utilities::simplified_url(certificate_error.url()));
+      auto const url
+	(dooble_ui_utilities::simplified_url(certificate_error.url()));
 
 #if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
       m_certificate_error = certificate_error.errorDescription();

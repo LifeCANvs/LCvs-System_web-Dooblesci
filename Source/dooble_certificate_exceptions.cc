@@ -80,8 +80,9 @@ void dooble_certificate_exceptions::exception_accepted(const QString &error,
 
   QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
 
-  auto list(m_ui.table->findItems(url.toString(),
-				  Qt::MatchEndsWith | Qt::MatchStartsWith));
+  auto const list
+    (m_ui.table->findItems(url.toString(),
+			   Qt::MatchEndsWith | Qt::MatchStartsWith));
 
   QApplication::restoreOverrideCursor();
 
@@ -131,8 +132,9 @@ void dooble_certificate_exceptions::remove_exception(const QUrl &url)
 {
   QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
 
-  auto list(m_ui.table->findItems(url.toString(),
-				  Qt::MatchEndsWith | Qt::MatchStartsWith));
+  auto const list
+    (m_ui.table->findItems(url.toString(),
+			   Qt::MatchEndsWith | Qt::MatchStartsWith));
 
   QApplication::restoreOverrideCursor();
 
@@ -234,7 +236,7 @@ void dooble_certificate_exceptions::slot_delete_selected(void)
 
   QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
 
-  QString database_name("dooble_certificate_exceptions");
+  QString const database_name("dooble_certificate_exceptions");
 
   {
     auto db = QSqlDatabase::addDatabase("QSQLITE", database_name);
@@ -295,7 +297,7 @@ void dooble_certificate_exceptions::slot_populate(void)
 
   if(dooble::s_cryptography && dooble::s_cryptography->authenticated())
     {
-      QString database_name("dooble_certificate_exceptions");
+      QString const database_name("dooble_certificate_exceptions");
 
       {
 	auto db = QSqlDatabase::addDatabase("QSQLITE", database_name);
@@ -388,8 +390,8 @@ void dooble_certificate_exceptions::slot_search_timer_timeout(void)
 {
   QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
 
+  auto const text(m_ui.search->text().toLower().trimmed());
   auto count = m_ui.table->rowCount();
-  auto text(m_ui.search->text().toLower().trimmed());
 
   for(int i = 0; i < m_ui.table->rowCount(); i++)
     if(text.isEmpty())

@@ -51,9 +51,9 @@ void dooble_zip::requestStarted(QWebEngineUrlRequestJob *request)
 	  this,
 	  SLOT(slot_error(QWebEngineUrlRequestJob::Error)));
   connect(zip_implementation,
-	  SIGNAL(finished(const QByteArray &, const bool)),
+	  SIGNAL(finished(const QByteArray &, bool)),
 	  this,
-	  SLOT(slot_finished(const QByteArray &, const bool)));
+	  SLOT(slot_finished(const QByteArray &, bool)));
 }
 
 void dooble_zip::set_web_engine_view(dooble_web_engine_view *web_engine_view)
@@ -67,7 +67,7 @@ void dooble_zip::slot_error(QWebEngineUrlRequestJob::Error error)
     m_request->fail(error);
 }
 
-void dooble_zip::slot_finished(const QByteArray &bytes, const bool file)
+void dooble_zip::slot_finished(const QByteArray &bytes, bool file)
 {
   if(m_request)
     {
@@ -77,7 +77,7 @@ void dooble_zip::slot_finished(const QByteArray &bytes, const bool file)
 	{
 	  if(file)
 	    {
-	      QUrl url;
+	      QUrl const url;
 
 	      m_request->redirect(url);
 	    }
@@ -161,7 +161,7 @@ void dooble_zip_implementation::slot_finished
       ** Total         Total %                    Count
       */
 
-      auto output(m_content.split('\n'));
+      auto const output(m_content.split('\n'));
 
       m_html += "<table>\n";
       m_html += "<tr>\n";
@@ -174,13 +174,13 @@ void dooble_zip_implementation::slot_finished
 
       for(int i = 3; i < output.size() - 3; i++)
 	{
-	  auto bytes(output.at(i).trimmed());
+	  auto const bytes(output.at(i).trimmed());
 
 	  if(bytes.size() > 0)
 	    {
 	      m_html += "<tr>\n";
 
-	      auto list(bytes.split(' '));
+	      auto const list(bytes.split(' '));
 
 	      for(int j = 0; j < list.size(); j++)
 		if(list.at(j).trimmed().size() > 0)

@@ -56,7 +56,8 @@ class swifty: public QNetworkAccessManager
     return m_newest_version;
   }
 
-  void download()
+ public slots:
+  void slot_download()
   {
     m_buffer.clear();
 
@@ -88,7 +89,7 @@ class swifty: public QNetworkAccessManager
     if(m_reply)
       m_reply->deleteLater();
 
-    auto index = m_buffer.indexOf(m_search_for_string.toUtf8());
+    auto const index = m_buffer.indexOf(m_search_for_string.toUtf8());
 
     if(index >= 0)
       {

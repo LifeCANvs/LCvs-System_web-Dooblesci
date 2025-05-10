@@ -29,8 +29,9 @@
 #define dooble_application_h
 
 #include <QApplication>
+#include <QFont>
+#include <QPointer>
 
-class QTranslator;
 class dooble;
 
 class dooble_application: public QApplication
@@ -40,6 +41,7 @@ class dooble_application: public QApplication
  public:
   static QHash<QString, QColor> s_theme_colors;
   dooble_application(int &argc, char **argv);
+  QFont default_font(void) const;
   QString style_name(void) const;
   bool application_locked(void) const;
   void install_translator(void);
@@ -47,7 +49,8 @@ class dooble_application: public QApplication
   static void prepare_theme_colors(void);
 
  private:
-  QTranslator *m_translator;
+  QFont m_default_font;
+  QPointer<QTranslator> m_translator;
   bool m_application_locked;
 
  private slots:
@@ -62,6 +65,7 @@ class dooble_application: public QApplication
   void favorites_cleared(void);
   void favorites_sorted(void);
   void history_cleared(void);
+  void javascript_scripts_cleared(void);
   void status_bar_visible(bool state);
 };
 

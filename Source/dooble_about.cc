@@ -38,10 +38,9 @@
 dooble_about::dooble_about(void):QMainWindow()
 {
   m_swifty = new swifty
-    (DOOBLE_VERSION_STRING,
-     "#define DOOBLE_VERSION_STRING",
-     QUrl::fromUserInput("https://raw.githubusercontent.com/"
-			 "textbrowser/dooble/master/Source/dooble_version.h"),
+    (DOOBLE_VERSION_STRING_LTS,
+     "#define DOOBLE_VERSION_STRING_LTS",
+     QUrl::fromUserInput(DOOBLE_VERSION_FILE_URL),
      this);
   m_ui.setupUi(this);
   m_ui.digest->clear();
@@ -69,7 +68,8 @@ dooble_about::dooble_about(void):QMainWindow()
 	  SIGNAL(file_digest_computed(const QByteArray &)),
 	  this,
 	  SLOT(slot_file_digest_computed(const QByteArray &)));
-  m_swifty->download();
+  dooble_settings::setting("download_version_information").toBool() ?
+    QTimer::singleShot(5000, m_swifty, &swifty::slot_download) : (void) 0;
   new QShortcut(QKeySequence(tr("Ctrl+W")), this, SLOT(close(void)));
 
   QString qversion{""};
@@ -87,11 +87,11 @@ dooble_about::dooble_about(void):QMainWindow()
     (tr("<a href=\"qrc://Documentation/DoobleLicense.html\">"
 	"Dooble 3-Clause BSD License</a>"));
 
-  auto text
+  auto const text
     {tr("Architecture %1.<br>"
 	"Product: %2.<br>"
 	"Qt version %3 (runtime %4).").
-     arg(DOOBLE_ARCHITECTURE_STR).
+     arg(QSysInfo::currentCpuArchitecture()).
      arg(QSysInfo::prettyProductName()).
      arg(QT_VERSION_STR).
      arg(qversion)};
@@ -103,8 +103,9 @@ dooble_about::dooble_about(void):QMainWindow()
   m_ui.user_agent->setText(dooble::s_default_http_user_agent);
   m_ui.version->setText
     (tr("Dooble version %1. Made with love by textbrowser. "
-        "The official version is <b>%1</b>.").
-     arg(DOOBLE_VERSION_STRING));
+        "The <b>official version</b> is <b>%2</b>.").
+     arg(DOOBLE_VERSION_STRING).
+     arg(DOOBLE_VERSION_STRING_LTS));
   compute_self_digest();
 }
 
@@ -180,7 +181,7 @@ void dooble_about::slot_swifty(void)
 {
   m_ui.version->setText
     (tr("Dooble version %1. Made with love by textbrowser. "
-        "The official version is <b>%2</b>.").
+        "The <b>official version</b> is <b>%2</b>.").
      arg(DOOBLE_VERSION_STRING).
      arg(m_swifty->newest_version()));
 }

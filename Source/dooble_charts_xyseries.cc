@@ -110,48 +110,53 @@ properties(void) const
   if(!series || !x_axis || !y_axis)
     return properties;
 
-  properties[dooble_charts::XY_SERIES_COLOR] = series->color();
-  properties[dooble_charts::XY_SERIES_NAME] = series->name();
-  properties[dooble_charts::XY_SERIES_OPACITY] = series->opacity();
-  properties[dooble_charts::XY_SERIES_POINTS_VISIBLE] = series->pointsVisible();
-  properties[dooble_charts::XY_SERIES_POINT_LABELS_CLIPPING] =
+  properties[dooble_charts::Properties::XY_SERIES_COLOR] = series->color();
+  properties[dooble_charts::Properties::XY_SERIES_NAME] = series->name();
+  properties[dooble_charts::Properties::XY_SERIES_OPACITY] = series->opacity();
+  properties[dooble_charts::Properties::XY_SERIES_POINTS_VISIBLE] =
+    series->pointsVisible();
+  properties[dooble_charts::Properties::XY_SERIES_POINT_LABELS_CLIPPING] =
     series->pointLabelsClipping();
-  properties[dooble_charts::XY_SERIES_POINT_LABELS_COLOR] =
+  properties[dooble_charts::Properties::XY_SERIES_POINT_LABELS_COLOR] =
     series->pointLabelsColor();
-  properties[dooble_charts::XY_SERIES_POINT_LABELS_FONT] =
+  properties[dooble_charts::Properties::XY_SERIES_POINT_LABELS_FONT] =
     series->pointLabelsFont();
-  properties[dooble_charts::XY_SERIES_POINT_LABELS_FORMAT] =
+  properties[dooble_charts::Properties::XY_SERIES_POINT_LABELS_FORMAT] =
     series->pointLabelsFormat();
-  properties[dooble_charts::XY_SERIES_POINT_LABELS_VISIBLE] =
+  properties[dooble_charts::Properties::XY_SERIES_POINT_LABELS_VISIBLE] =
     series->pointLabelsVisible();
-  properties[dooble_charts::XY_SERIES_USE_OPENGL] = series->useOpenGL();
-  properties[dooble_charts::XY_SERIES_VISIBLE] = series->isVisible();
-  properties[dooble_charts::XY_SERIES_X_AXIS_LABEL_FORMAT] = x_axis->
-    labelFormat();
-  properties[dooble_charts::XY_SERIES_X_AXIS_MAX] = x_axis->max();
-  properties[dooble_charts::XY_SERIES_X_AXIS_MIN] = x_axis->min();
-  properties[dooble_charts::XY_SERIES_X_AXIS_MINOR_TICK_COUNT] = x_axis->
-    minorTickCount();
-  properties[dooble_charts::XY_SERIES_X_AXIS_TICK_ANCHOR] = x_axis->
-    tickAnchor();
-  properties[dooble_charts::XY_SERIES_X_AXIS_TICK_COUNT] = x_axis->tickCount();
-  properties[dooble_charts::XY_SERIES_X_AXIS_TICK_INTERVAL] = x_axis->
-    tickInterval();
-  properties[dooble_charts::XY_SERIES_X_AXIS_TICK_TYPE] = tick_type_to_string
-    (x_axis->tickType());
-  properties[dooble_charts::XY_SERIES_Y_AXIS_LABEL_FORMAT] = y_axis->
-    labelFormat();
-  properties[dooble_charts::XY_SERIES_Y_AXIS_MAX] = y_axis->max();
-  properties[dooble_charts::XY_SERIES_Y_AXIS_MIN] = y_axis->min();
-  properties[dooble_charts::XY_SERIES_Y_AXIS_MINOR_TICK_COUNT] = y_axis->
-    minorTickCount();
-  properties[dooble_charts::XY_SERIES_Y_AXIS_TICK_ANCHOR] = y_axis->
-    tickAnchor();
-  properties[dooble_charts::XY_SERIES_Y_AXIS_TICK_COUNT] = y_axis->tickCount();
-  properties[dooble_charts::XY_SERIES_Y_AXIS_TICK_INTERVAL] = y_axis->
-    tickInterval();
-  properties[dooble_charts::XY_SERIES_Y_AXIS_TICK_TYPE] = tick_type_to_string
-    (y_axis->tickType());
+  properties[dooble_charts::Properties::XY_SERIES_USE_OPENGL] =
+    series->useOpenGL();
+  properties[dooble_charts::Properties::XY_SERIES_VISIBLE] =
+    series->isVisible();
+  properties[dooble_charts::Properties::XY_SERIES_X_AXIS_LABEL_FORMAT] =
+    x_axis->labelFormat();
+  properties[dooble_charts::Properties::XY_SERIES_X_AXIS_MAX] = x_axis->max();
+  properties[dooble_charts::Properties::XY_SERIES_X_AXIS_MIN] = x_axis->min();
+  properties[dooble_charts::Properties::XY_SERIES_X_AXIS_MINOR_TICK_COUNT] =
+    x_axis->minorTickCount();
+  properties[dooble_charts::Properties::XY_SERIES_X_AXIS_TICK_ANCHOR] =
+    x_axis->tickAnchor();
+  properties[dooble_charts::Properties::XY_SERIES_X_AXIS_TICK_COUNT] =
+    x_axis->tickCount();
+  properties[dooble_charts::Properties::XY_SERIES_X_AXIS_TICK_INTERVAL] =
+    x_axis->tickInterval();
+  properties[dooble_charts::Properties::XY_SERIES_X_AXIS_TICK_TYPE] =
+    tick_type_to_string(x_axis->tickType());
+  properties[dooble_charts::Properties::XY_SERIES_Y_AXIS_LABEL_FORMAT] =
+    y_axis->labelFormat();
+  properties[dooble_charts::Properties::XY_SERIES_Y_AXIS_MAX] = y_axis->max();
+  properties[dooble_charts::Properties::XY_SERIES_Y_AXIS_MIN] = y_axis->min();
+  properties[dooble_charts::Properties::XY_SERIES_Y_AXIS_MINOR_TICK_COUNT] =
+    y_axis->minorTickCount();
+  properties[dooble_charts::Properties::XY_SERIES_Y_AXIS_TICK_ANCHOR] =
+    y_axis->tickAnchor();
+  properties[dooble_charts::Properties::XY_SERIES_Y_AXIS_TICK_COUNT] =
+    y_axis->tickCount();
+  properties[dooble_charts::Properties::XY_SERIES_Y_AXIS_TICK_INTERVAL] =
+    y_axis->tickInterval();
+  properties[dooble_charts::Properties::XY_SERIES_Y_AXIS_TICK_TYPE] =
+    tick_type_to_string(y_axis->tickType());
 #endif
   return properties;
 }
@@ -180,7 +185,7 @@ properties_for_database(void) const
 
 	continue;
 
-      auto property(property_to_name(it.key()));
+      auto const property(property_to_name(it.key()));
 
       if(!property.isEmpty())
 	hash[property] = it.value();
@@ -215,7 +220,7 @@ x_axis_properties_for_database(void) const
 
 	continue;
 
-      auto property(property_to_name(it.key()));
+      auto const property(property_to_name(it.key()));
 
       if(!property.isEmpty())
 	hash[property] = it.value();
@@ -250,7 +255,7 @@ y_axis_properties_for_database(void) const
 
 	continue;
 
-      auto property(property_to_name(it.key()));
+      auto const property(property_to_name(it.key()));
 
       if(!property.isEmpty())
 	hash[property] = it.value();
@@ -262,7 +267,7 @@ y_axis_properties_for_database(void) const
 QString dooble_charts_xyseries::property_to_name
 (const dooble_charts::Properties property)
 {
-  auto name(dooble_charts::property_to_name(property).trimmed());
+  auto const name(dooble_charts::property_to_name(property).trimmed());
 
   if(!name.isEmpty())
     return name;
@@ -299,7 +304,11 @@ QString dooble_charts_xyseries::property_to_name
     case dooble_charts::Properties::XY_SERIES_Y_AXIS_TICK_INTERVAL:
     case dooble_charts::Properties::XY_SERIES_Y_AXIS_TICK_TYPE:
       {
-	return s_chart_properties_strings[property - LEGEND_VISIBLE - 1];
+	auto const index = static_cast<size_t> (property) -
+	  static_cast<size_t> (dooble_charts::Properties::LEGEND_VISIBLE) -
+	  static_cast<size_t> (1);
+
+	return s_chart_properties_strings[index];
       }
     default:
       {
@@ -330,7 +339,7 @@ QString dooble_charts_xyseries::tick_type_to_string
 QValueAxis::TickType dooble_charts_xyseries::string_to_tick_type
 (const QString &t)
 {
-  auto text(t.trimmed());
+  auto const text(t.trimmed());
 
   if(text == tr("Dynamic"))
     return QValueAxis::TicksDynamic;
@@ -353,7 +362,7 @@ void dooble_charts_xyseries::save(QString &error)
 
   QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
 
-  auto database_name(dooble_database_utilities::database_name());
+  auto const database_name(dooble_database_utilities::database_name());
 
   {
     auto db = QSqlDatabase::addDatabase("QSQLITE", database_name);
@@ -365,8 +374,9 @@ void dooble_charts_xyseries::save(QString &error)
     if(db.open())
       {
 	QSqlQuery query(db);
-	auto name(properties().value(dooble_charts::Properties::CHART_NAME).
-		  toString().toUtf8());
+	auto const name
+	  (properties().value(dooble_charts::Properties::CHART_NAME).
+	   toString().toUtf8());
 
 	query.prepare("INSERT INTO dooble_charts "
 		      "(name, property, subset_name, value) "
@@ -470,8 +480,8 @@ void dooble_charts_xyseries::slot_data_ready
   if(!series)
     return;
 
-  auto x = vector.at(0);
-  auto y = vector.at(1);
+  auto const x = vector.at(0);
+  auto const y = vector.at(1);
 
   series->append(x, y);
 
@@ -542,7 +552,7 @@ void dooble_charts_xyseries::slot_item_changed(QStandardItem *item)
   if(!series || !x_axis || !y_axis)
     return;
 
-  auto property = dooble_charts::Properties
+  auto const property = dooble_charts::Properties
     (item->data(Qt::ItemDataRole(Qt::UserRole + 1)).toInt());
 
   switch(property)

@@ -3,31 +3,33 @@
 }
 
 cache()
-include(dooble-source.pro)
+include(dooble-source.qt-project)
 
 macx {
-exists(/opt/homebrew/Cellar/qt/6.7.0_1/share/qt/libexec/qwebengine_convert_dict) {
-CT = "/opt/homebrew/Cellar/qt/6.7.0_1/share/qt/libexec/qwebengine_convert_dict"
-}
-
-exists(/usr/local/Cellar/qt/6.7.0_1/share/qt/libexec/qwebengine_convert_dict) {
-CT = "/usr/local/Cellar/qt/6.7.0_1/share/qt/libexec/qwebengine_convert_dict"
-}
+CONVERT_DICT = ""
 } else {
 versionAtLeast(QT_VERSION, 6.0.0) {
 freebsd-* {
-CT = "/usr/local/libexec/qt6/qwebengine_convert_dict"
+CONVERT_DICT = "/usr/local/libexec/qt6/qwebengine_convert_dict"
 } else:win32 {
-qtPrepareTool(CT, qwebengine_convert_dict)
+qtPrepareTool(CONVERT_DICT, qwebengine_convert_dict)
 } else {
-qtPrepareTool(CT, ../libexec/qwebengine_convert_dict)
+qtPrepareTool(CONVERT_DICT, ../libexec/qwebengine_convert_dict)
 }
 } else {
-qtPrepareTool(CT, qwebengine_convert_dict)
+qtPrepareTool(CONVERT_DICT, qwebengine_convert_dict)
 }
 }
 
-DICTIONARIES_DIR = qtwebengine_dictionaries
+DICTIONARIES = $$(DOOBLE_DICTIONARIES_DIRECTORY)
+
+isEmpty(DICTIONARIES) {
+warning("DOOBLE_DICTIONARIES_DIRECTORY does not exist.")
+} else:!exists($$DICTIONARIES) {
+warning("DOOBLE_DICTIONARIES_DIRECTORY does not exist.")
+}
+
+WEB_DICTIONARIES = qtwebengine_dictionaries
 
 macx {
 dict_base_paths = af_ZA/af_ZA \
@@ -74,7 +76,7 @@ dict_base_paths = af_ZA/af_ZA \
                   uk_UA/uk_UA \
                   vi/vi_VN
 
-dmg.commands = hdiutil create ~/Dooble.dmg -volname Dooble -srcfolder Dooble.d
+dmg.commands = hdiutil create Dooble.dmg -volname Dooble -srcfolder Dooble.d
 } else:unix {
 dict_base_paths = af_ZA/af_ZA \
                   an_ES/an_ES \
@@ -189,22 +191,24 @@ dict_base_paths = af_ZA/af_ZA \
                   vi/vi_VN
 }
 
+isEmpty(DICTIONARIES) {
+} else:exists($$DICTIONARIES) {
 for(base_path, dict_base_paths) {
-dict.files += $$PWD/Dictionaries/$${base_path}.dic
+dict.files += $$DICTIONARIES/$${base_path}.dic
+}
 }
 
 dictoolbuild.CONFIG = no_link target_predeps
-dictoolbuild.commands = $${CT} ${QMAKE_FILE_IN} ${QMAKE_FILE_OUT}
+dictoolbuild.commands = $${CONVERT_DICT} ${QMAKE_FILE_IN} ${QMAKE_FILE_OUT}
 dictoolbuild.depends = ${QMAKE_FILE_PATH}/${QMAKE_FILE_BASE}.aff
 dictoolbuild.input = dict.files
 dictoolbuild.name = ${QMAKE_FILE_IN_BASE} Build
-dictoolbuild.output = $${DICTIONARIES_DIR}/${QMAKE_FILE_BASE}.bdic
+dictoolbuild.output = $${WEB_DICTIONARIES}/${QMAKE_FILE_BASE}.bdic
 
 build_deb.bash =
 
 linux {
 exists(/usr/bin/dpkg-deb) {
-build-deb.commands = Distributions/build_deb.bash
 }
 
 exists(/usr/include/gpgme.h) {
@@ -215,15 +219,9 @@ LIBS += -lgpgme
 
 unix {
 QMAKE_LFLAGS_RPATH =
-purge.commands = find . -name '*~*' -exec rm -f {} \;
+purge.commands = find . -name \'*~*\' -exec rm -f {} \;
 } else {
 purge.commands =
-}
-
-doxygen.commands =
-
-exists(/usr/bin/doxygen) {
-doxygen.commands = doxygen dooble.doxygen
 }
 
 FILES = /usr/include/linux/mman.h \
@@ -295,12 +293,12 @@ QMAKE_CXXFLAGS_RELEASE += -O3 \
                           -Wcast-qual \
                           -Wextra \
                           -Wformat=2 \
+                          -Wno-c++20-attribute-extensions \
                           -Wold-style-cast \
                           -Woverloaded-virtual \
                           -Wpointer-arith \
                           -Wstack-protector \
                           -Wstrict-overflow=5 \
-                          -Wzero-as-null-pointer-constant \
                           -fPIE \
                           -fstack-protector-all \
                           -funroll-loops \
@@ -308,7 +306,7 @@ QMAKE_CXXFLAGS_RELEASE += -O3 \
                           -pedantic \
                           -std=c++17
 QMAKE_CXXFLAGS_RELEASE -= -O2
-QMAKE_MACOSX_DEPLOYMENT_TARGET = 11.0
+QMAKE_MACOSX_DEPLOYMENT_TARGET = 12.0
 } else:win32 {
 versionAtLeast(QT_VERSION, 6.0.0) {
 QMAKE_LFLAGS += /entry:mainCRTStartup
@@ -319,7 +317,6 @@ QMAKE_CXXFLAGS_RELEASE += -O3 \
 			  -Warray-bounds=2 \
                           -Wcast-align \
                           -Wcast-qual \
-                          -Wdangling-reference \
                           -Wdouble-promotion \
                           -Werror \
                           -Wextra \
@@ -364,8 +361,13 @@ QMAKE_DISTCLEAN += -r qtwebengine_dictionaries \
                    .qmake.cache \
                    .qmake.stash \
                    temp
+
+isEmpty(CONVERT_DICT) {
+} else {
 QMAKE_EXTRA_COMPILERS += dictoolbuild
-QMAKE_EXTRA_TARGETS = build-deb dmg doxygen purge
+}
+
+QMAKE_EXTRA_TARGETS = build-deb dmg purge
 
 macx {
 ICON            = Icons/Logo/dooble.icns
@@ -385,308 +387,308 @@ RCC_DIR = temp/rcc
 UI_DIR = temp/ui
 
 macx {
-DISTFILES += Dictionaries/af_ZA/af_ZA.aff \
-             Dictionaries/af_ZA/af_ZA.dic \
-             Dictionaries/an_ES/an_ES.aff \
-             Dictionaries/an_ES/an_ES.dic \
-             Dictionaries/ar/ar.aff \
-             Dictionaries/ar/ar.dic \
-             Dictionaries/be_BY/be_BY.aff \
-             Dictionaries/be_BY/be_BY.dic \
-             Dictionaries/bn_BD/bn_BD.aff \
-             Dictionaries/bn_BD/bn_BD.dic \
-             Dictionaries/ca/ca.aff \
-             Dictionaries/ca/ca.dic \
-             Dictionaries/ca/ca-valencia.aff \
-             Dictionaries/ca/ca-valencia.dic \
-             Dictionaries/da_DK/da_DK.aff \
-             Dictionaries/da_DK/da_DK.dic \
-             Dictionaries/de/de_AT_frami.aff \
-             Dictionaries/de/de_AT_frami.dic \
-             Dictionaries/de/de_CH_frami.aff \
-             Dictionaries/de/de_CH_frami.dic \
-             Dictionaries/de/de_DE_frami.aff \
-             Dictionaries/de/de_DE_frami.dic \
-             Dictionaries/en/en_AU.aff \
-             Dictionaries/en/en_AU.dic \
-             Dictionaries/en/en_CA.aff \
-             Dictionaries/en/en_CA.dic \
-             Dictionaries/en/en_GB.aff \
-             Dictionaries/en/en_GB.dic \
-             Dictionaries/en/en_US.aff \
-             Dictionaries/en/en_US.dic \
-             Dictionaries/en/en_ZA.aff \
-             Dictionaries/en/en_ZA.dic \
-             Dictionaries/es/es_ANY.aff \
-             Dictionaries/es/es_ANY.dic \
-             Dictionaries/gd_GB/gd_GB.aff \
-             Dictionaries/gd_GB/gd_GB.dic \
-             Dictionaries/gl/gl_ES.aff \
-             Dictionaries/gl/gl_ES.dic \
-             Dictionaries/gug/gug.aff \
-             Dictionaries/gug/gug.dic \
-             Dictionaries/he_IL/he_IL.aff \
-             Dictionaries/he_IL/he_IL.dic \
-             Dictionaries/hi_IN/hi_IN.aff \
-             Dictionaries/hi_IN/hi_IN.dic \
-             Dictionaries/hr_HR/hr_HR.aff \
-             Dictionaries/hr_HR/hr_HR.dic \
-             Dictionaries/hu_HU/hu_HU.aff \
-             Dictionaries/hu_HU/hu_HU.dic \
-             Dictionaries/is/is.aff \
-             Dictionaries/is/is.dic \
-             Dictionaries/kmr_Latn/kmr_Latn.aff \
-             Dictionaries/kmr_Latn/kmr_Latn.dic \
-             Dictionaries/lo_LA/lo_LA.aff \
-             Dictionaries/lo_LA/lo_LA.dic \
-             Dictionaries/ne_NP/ne_NP.aff \
-             Dictionaries/ne_NP/ne_NP.dic \
-             Dictionaries/nl_NL/nl_NL.aff \
-             Dictionaries/nl_NL/nl_NL.dic \
-             Dictionaries/no/nb_NO.aff \
-             Dictionaries/no/nb_NO.dic \
-             Dictionaries/no/nn_NO.aff \
-             Dictionaries/no/nn_NO.dic \
-             Dictionaries/pt_BR/pt_BR.aff \
-             Dictionaries/pt_BR/pt_BR.dic \
-             Dictionaries/pt_PT/pt_PT.aff \
-             Dictionaries/pt_PT/pt_PT.dic \
-             Dictionaries/ro/ro_RO.aff \
-             Dictionaries/ro/ro_RO.dic \
-             Dictionaries/si_LK/si_LK.aff \
-             Dictionaries/si_LK/si_LK.dic \
-             Dictionaries/sk_SK/sk_SK.aff \
-             Dictionaries/sk_SK/sk_SK.dic \
-             Dictionaries/sr/sr.aff \
-             Dictionaries/sr/sr.dic \
-             Dictionaries/sr/sr-Latn.aff \
-             Dictionaries/sr/sr-Latn.dic \
-             Dictionaries/sw_TZ/sw_TZ.aff \
-             Dictionaries/sw_TZ/sw_TZ.dic \
-             Dictionaries/te_IN/te_IN.aff \
-             Dictionaries/te_IN/te_IN.dic \
-             Dictionaries/uk_UA/uk_UA.aff \
-             Dictionaries/uk_UA/uk_UA.dic \
-             Dictionaries/vi/vi_VN.aff \
-             Dictionaries/vi/vi_VN.dic
+DISTFILES += $$DICTIONARIES/af_ZA/af_ZA.aff \
+             $$DICTIONARIES/af_ZA/af_ZA.dic \
+             $$DICTIONARIES/an_ES/an_ES.aff \
+             $$DICTIONARIES/an_ES/an_ES.dic \
+             $$DICTIONARIES/ar/ar.aff \
+             $$DICTIONARIES/ar/ar.dic \
+             $$DICTIONARIES/be_BY/be_BY.aff \
+             $$DICTIONARIES/be_BY/be_BY.dic \
+             $$DICTIONARIES/bn_BD/bn_BD.aff \
+             $$DICTIONARIES/bn_BD/bn_BD.dic \
+             $$DICTIONARIES/ca/ca.aff \
+             $$DICTIONARIES/ca/ca.dic \
+             $$DICTIONARIES/ca/ca-valencia.aff \
+             $$DICTIONARIES/ca/ca-valencia.dic \
+             $$DICTIONARIES/da_DK/da_DK.aff \
+             $$DICTIONARIES/da_DK/da_DK.dic \
+             $$DICTIONARIES/de/de_AT_frami.aff \
+             $$DICTIONARIES/de/de_AT_frami.dic \
+             $$DICTIONARIES/de/de_CH_frami.aff \
+             $$DICTIONARIES/de/de_CH_frami.dic \
+             $$DICTIONARIES/de/de_DE_frami.aff \
+             $$DICTIONARIES/de/de_DE_frami.dic \
+             $$DICTIONARIES/en/en_AU.aff \
+             $$DICTIONARIES/en/en_AU.dic \
+             $$DICTIONARIES/en/en_CA.aff \
+             $$DICTIONARIES/en/en_CA.dic \
+             $$DICTIONARIES/en/en_GB.aff \
+             $$DICTIONARIES/en/en_GB.dic \
+             $$DICTIONARIES/en/en_US.aff \
+             $$DICTIONARIES/en/en_US.dic \
+             $$DICTIONARIES/en/en_ZA.aff \
+             $$DICTIONARIES/en/en_ZA.dic \
+             $$DICTIONARIES/es/es_ANY.aff \
+             $$DICTIONARIES/es/es_ANY.dic \
+             $$DICTIONARIES/gd_GB/gd_GB.aff \
+             $$DICTIONARIES/gd_GB/gd_GB.dic \
+             $$DICTIONARIES/gl/gl_ES.aff \
+             $$DICTIONARIES/gl/gl_ES.dic \
+             $$DICTIONARIES/gug/gug.aff \
+             $$DICTIONARIES/gug/gug.dic \
+             $$DICTIONARIES/he_IL/he_IL.aff \
+             $$DICTIONARIES/he_IL/he_IL.dic \
+             $$DICTIONARIES/hi_IN/hi_IN.aff \
+             $$DICTIONARIES/hi_IN/hi_IN.dic \
+             $$DICTIONARIES/hr_HR/hr_HR.aff \
+             $$DICTIONARIES/hr_HR/hr_HR.dic \
+             $$DICTIONARIES/hu_HU/hu_HU.aff \
+             $$DICTIONARIES/hu_HU/hu_HU.dic \
+             $$DICTIONARIES/is/is.aff \
+             $$DICTIONARIES/is/is.dic \
+             $$DICTIONARIES/kmr_Latn/kmr_Latn.aff \
+             $$DICTIONARIES/kmr_Latn/kmr_Latn.dic \
+             $$DICTIONARIES/lo_LA/lo_LA.aff \
+             $$DICTIONARIES/lo_LA/lo_LA.dic \
+             $$DICTIONARIES/ne_NP/ne_NP.aff \
+             $$DICTIONARIES/ne_NP/ne_NP.dic \
+             $$DICTIONARIES/nl_NL/nl_NL.aff \
+             $$DICTIONARIES/nl_NL/nl_NL.dic \
+             $$DICTIONARIES/no/nb_NO.aff \
+             $$DICTIONARIES/no/nb_NO.dic \
+             $$DICTIONARIES/no/nn_NO.aff \
+             $$DICTIONARIES/no/nn_NO.dic \
+             $$DICTIONARIES/pt_BR/pt_BR.aff \
+             $$DICTIONARIES/pt_BR/pt_BR.dic \
+             $$DICTIONARIES/pt_PT/pt_PT.aff \
+             $$DICTIONARIES/pt_PT/pt_PT.dic \
+             $$DICTIONARIES/ro/ro_RO.aff \
+             $$DICTIONARIES/ro/ro_RO.dic \
+             $$DICTIONARIES/si_LK/si_LK.aff \
+             $$DICTIONARIES/si_LK/si_LK.dic \
+             $$DICTIONARIES/sk_SK/sk_SK.aff \
+             $$DICTIONARIES/sk_SK/sk_SK.dic \
+             $$DICTIONARIES/sr/sr.aff \
+             $$DICTIONARIES/sr/sr.dic \
+             $$DICTIONARIES/sr/sr-Latn.aff \
+             $$DICTIONARIES/sr/sr-Latn.dic \
+             $$DICTIONARIES/sw_TZ/sw_TZ.aff \
+             $$DICTIONARIES/sw_TZ/sw_TZ.dic \
+             $$DICTIONARIES/te_IN/te_IN.aff \
+             $$DICTIONARIES/te_IN/te_IN.dic \
+             $$DICTIONARIES/uk_UA/uk_UA.aff \
+             $$DICTIONARIES/uk_UA/uk_UA.dic \
+             $$DICTIONARIES/vi/vi_VN.aff \
+             $$DICTIONARIES/vi/vi_VN.dic
 } else:unix {
-DISTFILES += Dictionaries/af_ZA/af_ZA.aff \
-             Dictionaries/af_ZA/af_ZA.dic \
-             Dictionaries/an_ES/an_ES.aff \
-             Dictionaries/an_ES/an_ES.dic \
-             Dictionaries/ar/ar.aff \
-             Dictionaries/ar/ar.dic \
-             Dictionaries/be_BY/be_BY.aff \
-             Dictionaries/be_BY/be_BY.dic \
-             Dictionaries/bn_BD/bn_BD.aff \
-             Dictionaries/bn_BD/bn_BD.dic \
-             Dictionaries/br_FR/br_FR.aff \
-             Dictionaries/br_FR/br_FR.dic \
-             Dictionaries/bs_BA/bs_BA.aff \
-             Dictionaries/bs_BA/bs_BA.dic \
-             Dictionaries/ca/ca.aff \
-             Dictionaries/ca/ca.dic \
-             Dictionaries/ca/ca-valencia.aff \
-             Dictionaries/ca/ca-valencia.dic \
-             Dictionaries/cs_CZ/cs_CZ.aff \
-             Dictionaries/cs_CZ/cs_CZ.dic \
-             Dictionaries/da_DK/da_DK.aff \
-             Dictionaries/da_DK/da_DK.dic \
-             Dictionaries/de/de_AT_frami.aff \
-             Dictionaries/de/de_AT_frami.dic \
-             Dictionaries/de/de_CH_frami.aff \
-             Dictionaries/de/de_CH_frami.dic \
-             Dictionaries/de/de_DE_frami.aff \
-             Dictionaries/de/de_DE_frami.dic \
-             Dictionaries/el_GR/el_GR.aff \
-             Dictionaries/el_GR/el_GR.dic \
-             Dictionaries/en/en_AU.aff \
-             Dictionaries/en/en_AU.dic \
-             Dictionaries/en/en_CA.aff \
-             Dictionaries/en/en_CA.dic \
-             Dictionaries/en/en_GB.aff \
-             Dictionaries/en/en_GB.dic \
-             Dictionaries/en/en_US.aff \
-             Dictionaries/en/en_US.dic \
-             Dictionaries/en/en_ZA.aff \
-             Dictionaries/en/en_ZA.dic \
-             Dictionaries/es/es_ANY.aff \
-             Dictionaries/es/es_ANY.dic \
-             Dictionaries/et_EE/et_EE.aff \
-             Dictionaries/et_EE/et_EE.dic \
-             Dictionaries/gd_GB/gd_GB.aff \
-             Dictionaries/gd_GB/gd_GB.dic \
-             Dictionaries/gl/gl_ES.aff \
-             Dictionaries/gl/gl_ES.dic \
-             Dictionaries/gug/gug.aff \
-             Dictionaries/gug/gug.dic \
-             Dictionaries/he_IL/he_IL.aff \
-             Dictionaries/he_IL/he_IL.dic \
-             Dictionaries/hi_IN/hi_IN.aff \
-             Dictionaries/hi_IN/hi_IN.dic \
-             Dictionaries/hr_HR/hr_HR.aff \
-             Dictionaries/hr_HR/hr_HR.dic \
-             Dictionaries/hu_HU/hu_HU.aff \
-             Dictionaries/hu_HU/hu_HU.dic \
-             Dictionaries/is/is.aff \
-             Dictionaries/is/is.dic \
-             Dictionaries/it_IT/it_IT.aff \
-             Dictionaries/it_IT/it_IT.dic \
-             Dictionaries/kmr_Latn/kmr_Latn.aff \
-             Dictionaries/kmr_Latn/kmr_Latn.dic \
-             Dictionaries/lo_LA/lo_LA.aff \
-             Dictionaries/lo_LA/lo_LA.dic \
-             Dictionaries/lt_LT/lt.aff \
-             Dictionaries/lt_LT/lt.dic \
-             Dictionaries/lv_LV/lv_LV.aff \
-             Dictionaries/lv_LV/lv_LV.dic \
-             Dictionaries/ne_NP/ne_NP.aff \
-             Dictionaries/ne_NP/ne_NP.dic \
-             Dictionaries/nl_NL/nl_NL.aff \
-             Dictionaries/nl_NL/nl_NL.dic \
-             Dictionaries/no/nb_NO.aff \
-             Dictionaries/no/nb_NO.dic \
-             Dictionaries/no/nn_NO.aff \
-             Dictionaries/no/nn_NO.dic \
-             Dictionaries/oc_FR/oc_FR.aff \
-             Dictionaries/oc_FR/oc_FR.dic \
-             Dictionaries/pl_PL/pl_PL.aff \
-             Dictionaries/pl_PL/pl_PL.dic \
-             Dictionaries/pt_BR/pt_BR.aff \
-             Dictionaries/pt_BR/pt_BR.dic \
-             Dictionaries/pt_PT/pt_PT.aff \
-             Dictionaries/pt_PT/pt_PT.dic \
-             Dictionaries/ro/ro_RO.aff \
-             Dictionaries/ro/ro_RO.dic \
-             Dictionaries/ru_RU/ru_RU.aff \
-             Dictionaries/ru_RU/ru_RU.dic \
-             Dictionaries/si_LK/si_LK.aff \
-             Dictionaries/si_LK/si_LK.dic \
-             Dictionaries/sk_SK/sk_SK.aff \
-             Dictionaries/sk_SK/sk_SK.dic \
-             Dictionaries/sl_SI/sl_SI.aff \
-             Dictionaries/sl_SI/sl_SI.dic \
-             Dictionaries/sr/sr.aff \
-             Dictionaries/sr/sr.dic \
-             Dictionaries/sr/sr-Latn.aff \
-             Dictionaries/sr/sr-Latn.dic \
-             Dictionaries/sw_TZ/sw_TZ.aff \
-             Dictionaries/sw_TZ/sw_TZ.dic \
-             Dictionaries/te_IN/te_IN.aff \
-             Dictionaries/te_IN/te_IN.dic \
-             Dictionaries/uk_UA/uk_UA.aff \
-             Dictionaries/uk_UA/uk_UA.dic \
-             Dictionaries/vi/vi_VN.aff \
-             Dictionaries/vi/vi_VN.dic
+DISTFILES += $$DICTIONARIES/af_ZA/af_ZA.aff \
+             $$DICTIONARIES/af_ZA/af_ZA.dic \
+             $$DICTIONARIES/an_ES/an_ES.aff \
+             $$DICTIONARIES/an_ES/an_ES.dic \
+             $$DICTIONARIES/ar/ar.aff \
+             $$DICTIONARIES/ar/ar.dic \
+             $$DICTIONARIES/be_BY/be_BY.aff \
+             $$DICTIONARIES/be_BY/be_BY.dic \
+             $$DICTIONARIES/bn_BD/bn_BD.aff \
+             $$DICTIONARIES/bn_BD/bn_BD.dic \
+             $$DICTIONARIES/br_FR/br_FR.aff \
+             $$DICTIONARIES/br_FR/br_FR.dic \
+             $$DICTIONARIES/bs_BA/bs_BA.aff \
+             $$DICTIONARIES/bs_BA/bs_BA.dic \
+             $$DICTIONARIES/ca/ca.aff \
+             $$DICTIONARIES/ca/ca.dic \
+             $$DICTIONARIES/ca/ca-valencia.aff \
+             $$DICTIONARIES/ca/ca-valencia.dic \
+             $$DICTIONARIES/cs_CZ/cs_CZ.aff \
+             $$DICTIONARIES/cs_CZ/cs_CZ.dic \
+             $$DICTIONARIES/da_DK/da_DK.aff \
+             $$DICTIONARIES/da_DK/da_DK.dic \
+             $$DICTIONARIES/de/de_AT_frami.aff \
+             $$DICTIONARIES/de/de_AT_frami.dic \
+             $$DICTIONARIES/de/de_CH_frami.aff \
+             $$DICTIONARIES/de/de_CH_frami.dic \
+             $$DICTIONARIES/de/de_DE_frami.aff \
+             $$DICTIONARIES/de/de_DE_frami.dic \
+             $$DICTIONARIES/el_GR/el_GR.aff \
+             $$DICTIONARIES/el_GR/el_GR.dic \
+             $$DICTIONARIES/en/en_AU.aff \
+             $$DICTIONARIES/en/en_AU.dic \
+             $$DICTIONARIES/en/en_CA.aff \
+             $$DICTIONARIES/en/en_CA.dic \
+             $$DICTIONARIES/en/en_GB.aff \
+             $$DICTIONARIES/en/en_GB.dic \
+             $$DICTIONARIES/en/en_US.aff \
+             $$DICTIONARIES/en/en_US.dic \
+             $$DICTIONARIES/en/en_ZA.aff \
+             $$DICTIONARIES/en/en_ZA.dic \
+             $$DICTIONARIES/es/es_ANY.aff \
+             $$DICTIONARIES/es/es_ANY.dic \
+             $$DICTIONARIES/et_EE/et_EE.aff \
+             $$DICTIONARIES/et_EE/et_EE.dic \
+             $$DICTIONARIES/gd_GB/gd_GB.aff \
+             $$DICTIONARIES/gd_GB/gd_GB.dic \
+             $$DICTIONARIES/gl/gl_ES.aff \
+             $$DICTIONARIES/gl/gl_ES.dic \
+             $$DICTIONARIES/gug/gug.aff \
+             $$DICTIONARIES/gug/gug.dic \
+             $$DICTIONARIES/he_IL/he_IL.aff \
+             $$DICTIONARIES/he_IL/he_IL.dic \
+             $$DICTIONARIES/hi_IN/hi_IN.aff \
+             $$DICTIONARIES/hi_IN/hi_IN.dic \
+             $$DICTIONARIES/hr_HR/hr_HR.aff \
+             $$DICTIONARIES/hr_HR/hr_HR.dic \
+             $$DICTIONARIES/hu_HU/hu_HU.aff \
+             $$DICTIONARIES/hu_HU/hu_HU.dic \
+             $$DICTIONARIES/is/is.aff \
+             $$DICTIONARIES/is/is.dic \
+             $$DICTIONARIES/it_IT/it_IT.aff \
+             $$DICTIONARIES/it_IT/it_IT.dic \
+             $$DICTIONARIES/kmr_Latn/kmr_Latn.aff \
+             $$DICTIONARIES/kmr_Latn/kmr_Latn.dic \
+             $$DICTIONARIES/lo_LA/lo_LA.aff \
+             $$DICTIONARIES/lo_LA/lo_LA.dic \
+             $$DICTIONARIES/lt_LT/lt.aff \
+             $$DICTIONARIES/lt_LT/lt.dic \
+             $$DICTIONARIES/lv_LV/lv_LV.aff \
+             $$DICTIONARIES/lv_LV/lv_LV.dic \
+             $$DICTIONARIES/ne_NP/ne_NP.aff \
+             $$DICTIONARIES/ne_NP/ne_NP.dic \
+             $$DICTIONARIES/nl_NL/nl_NL.aff \
+             $$DICTIONARIES/nl_NL/nl_NL.dic \
+             $$DICTIONARIES/no/nb_NO.aff \
+             $$DICTIONARIES/no/nb_NO.dic \
+             $$DICTIONARIES/no/nn_NO.aff \
+             $$DICTIONARIES/no/nn_NO.dic \
+             $$DICTIONARIES/oc_FR/oc_FR.aff \
+             $$DICTIONARIES/oc_FR/oc_FR.dic \
+             $$DICTIONARIES/pl_PL/pl_PL.aff \
+             $$DICTIONARIES/pl_PL/pl_PL.dic \
+             $$DICTIONARIES/pt_BR/pt_BR.aff \
+             $$DICTIONARIES/pt_BR/pt_BR.dic \
+             $$DICTIONARIES/pt_PT/pt_PT.aff \
+             $$DICTIONARIES/pt_PT/pt_PT.dic \
+             $$DICTIONARIES/ro/ro_RO.aff \
+             $$DICTIONARIES/ro/ro_RO.dic \
+             $$DICTIONARIES/ru_RU/ru_RU.aff \
+             $$DICTIONARIES/ru_RU/ru_RU.dic \
+             $$DICTIONARIES/si_LK/si_LK.aff \
+             $$DICTIONARIES/si_LK/si_LK.dic \
+             $$DICTIONARIES/sk_SK/sk_SK.aff \
+             $$DICTIONARIES/sk_SK/sk_SK.dic \
+             $$DICTIONARIES/sl_SI/sl_SI.aff \
+             $$DICTIONARIES/sl_SI/sl_SI.dic \
+             $$DICTIONARIES/sr/sr.aff \
+             $$DICTIONARIES/sr/sr.dic \
+             $$DICTIONARIES/sr/sr-Latn.aff \
+             $$DICTIONARIES/sr/sr-Latn.dic \
+             $$DICTIONARIES/sw_TZ/sw_TZ.aff \
+             $$DICTIONARIES/sw_TZ/sw_TZ.dic \
+             $$DICTIONARIES/te_IN/te_IN.aff \
+             $$DICTIONARIES/te_IN/te_IN.dic \
+             $$DICTIONARIES/uk_UA/uk_UA.aff \
+             $$DICTIONARIES/uk_UA/uk_UA.dic \
+             $$DICTIONARIES/vi/vi_VN.aff \
+             $$DICTIONARIES/vi/vi_VN.dic
 } else:win32 {
-DISTFILES += Dictionaries/af_ZA/af_ZA.aff \
-             Dictionaries/af_ZA/af_ZA.dic \
-             Dictionaries/an_ES/an_ES.aff \
-             Dictionaries/an_ES/an_ES.dic \
-             Dictionaries/ar/ar.aff \
-             Dictionaries/ar/ar.dic \
-             Dictionaries/be_BY/be_BY.aff \
-             Dictionaries/be_BY/be_BY.dic \
-             Dictionaries/bn_BD/bn_BD.aff \
-             Dictionaries/bn_BD/bn_BD.dic \
-             Dictionaries/br_FR/br_FR.aff \
-             Dictionaries/br_FR/br_FR.dic \
-             Dictionaries/bs_BA/bs_BA.aff \
-             Dictionaries/bs_BA/bs_BA.dic \
-             Dictionaries/ca/ca.aff \
-             Dictionaries/ca/ca.dic \
-             Dictionaries/ca/ca-valencia.aff \
-             Dictionaries/ca/ca-valencia.dic \
-             Dictionaries/cs_CZ/cs_CZ.aff \
-             Dictionaries/cs_CZ/cs_CZ.dic \
-             Dictionaries/da_DK/da_DK.aff \
-             Dictionaries/da_DK/da_DK.dic \
-             Dictionaries/de/de_AT_frami.aff \
-             Dictionaries/de/de_AT_frami.dic \
-             Dictionaries/de/de_CH_frami.aff \
-             Dictionaries/de/de_CH_frami.dic \
-             Dictionaries/de/de_DE_frami.aff \
-             Dictionaries/de/de_DE_frami.dic \
-             Dictionaries/el_GR/el_GR.aff \
-             Dictionaries/el_GR/el_GR.dic \
-             Dictionaries/en/en_AU.aff \
-             Dictionaries/en/en_AU.dic \
-             Dictionaries/en/en_CA.aff \
-             Dictionaries/en/en_CA.dic \
-             Dictionaries/en/en_GB.aff \
-             Dictionaries/en/en_GB.dic \
-             Dictionaries/en/en_US.aff \
-             Dictionaries/en/en_US.dic \
-             Dictionaries/en/en_ZA.aff \
-             Dictionaries/en/en_ZA.dic \
-             Dictionaries/es/es_ANY.aff \
-             Dictionaries/es/es_ANY.dic \
-             Dictionaries/et_EE/et_EE.aff \
-             Dictionaries/et_EE/et_EE.dic \
-             Dictionaries/gd_GB/gd_GB.aff \
-             Dictionaries/gd_GB/gd_GB.dic \
-             Dictionaries/gl/gl_ES.aff \
-             Dictionaries/gl/gl_ES.dic \
-             Dictionaries/gug/gug.aff \
-             Dictionaries/gug/gug.dic \
-             Dictionaries/he_IL/he_IL.aff \
-             Dictionaries/he_IL/he_IL.dic \
-             Dictionaries/hi_IN/hi_IN.aff \
-             Dictionaries/hi_IN/hi_IN.dic \
-             Dictionaries/hr_HR/hr_HR.aff \
-             Dictionaries/hr_HR/hr_HR.dic \
-             Dictionaries/hu_HU/hu_HU.aff \
-             Dictionaries/hu_HU/hu_HU.dic \
-             Dictionaries/is/is.aff \
-             Dictionaries/is/is.dic \
-             Dictionaries/it_IT/it_IT.aff \
-             Dictionaries/it_IT/it_IT.dic \
-             Dictionaries/kmr_Latn/kmr_Latn.aff \
-             Dictionaries/kmr_Latn/kmr_Latn.dic \
-             Dictionaries/lo_LA/lo_LA.aff \
-             Dictionaries/lo_LA/lo_LA.dic \
-             Dictionaries/lt_LT/lt.aff \
-             Dictionaries/lt_LT/lt.dic \
-             Dictionaries/lv_LV/lv_LV.aff \
-             Dictionaries/lv_LV/lv_LV.dic \
-             Dictionaries/ne_NP/ne_NP.aff \
-             Dictionaries/ne_NP/ne_NP.dic \
-             Dictionaries/nl_NL/nl_NL.aff \
-             Dictionaries/nl_NL/nl_NL.dic \
-             Dictionaries/no/nb_NO.aff \
-             Dictionaries/no/nb_NO.dic \
-             Dictionaries/no/nn_NO.aff \
-             Dictionaries/no/nn_NO.dic \
-             Dictionaries/oc_FR/oc_FR.aff \
-             Dictionaries/oc_FR/oc_FR.dic \
-             Dictionaries/pl_PL/pl_PL.aff \
-             Dictionaries/pl_PL/pl_PL.dic \
-             Dictionaries/pt_BR/pt_BR.aff \
-             Dictionaries/pt_BR/pt_BR.dic \
-             Dictionaries/pt_PT/pt_PT.aff \
-             Dictionaries/pt_PT/pt_PT.dic \
-             Dictionaries/ro/ro_RO.aff \
-             Dictionaries/ro/ro_RO.dic \
-             Dictionaries/ru_RU/ru_RU.aff \
-             Dictionaries/ru_RU/ru_RU.dic \
-             Dictionaries/si_LK/si_LK.aff \
-             Dictionaries/si_LK/si_LK.dic \
-             Dictionaries/sk_SK/sk_SK.aff \
-             Dictionaries/sk_SK/sk_SK.dic \
-             Dictionaries/sl_SI/sl_SI.aff \
-             Dictionaries/sl_SI/sl_SI.dic \
-             Dictionaries/sr/sr.aff \
-             Dictionaries/sr/sr.dic \
-             Dictionaries/sr/sr-Latn.aff \
-             Dictionaries/sr/sr-Latn.dic \
-             Dictionaries/sw_TZ/sw_TZ.aff \
-             Dictionaries/sw_TZ/sw_TZ.dic \
-             Dictionaries/te_IN/te_IN.aff \
-             Dictionaries/te_IN/te_IN.dic \
-             Dictionaries/uk_UA/uk_UA.aff \
-             Dictionaries/uk_UA/uk_UA.dic \
-             Dictionaries/vi/vi_VN.aff \
-             Dictionaries/vi/vi_VN.dic
+DISTFILES += $$DICTIONARIES/af_ZA/af_ZA.aff \
+             $$DICTIONARIES/af_ZA/af_ZA.dic \
+             $$DICTIONARIES/an_ES/an_ES.aff \
+             $$DICTIONARIES/an_ES/an_ES.dic \
+             $$DICTIONARIES/ar/ar.aff \
+             $$DICTIONARIES/ar/ar.dic \
+             $$DICTIONARIES/be_BY/be_BY.aff \
+             $$DICTIONARIES/be_BY/be_BY.dic \
+             $$DICTIONARIES/bn_BD/bn_BD.aff \
+             $$DICTIONARIES/bn_BD/bn_BD.dic \
+             $$DICTIONARIES/br_FR/br_FR.aff \
+             $$DICTIONARIES/br_FR/br_FR.dic \
+             $$DICTIONARIES/bs_BA/bs_BA.aff \
+             $$DICTIONARIES/bs_BA/bs_BA.dic \
+             $$DICTIONARIES/ca/ca.aff \
+             $$DICTIONARIES/ca/ca.dic \
+             $$DICTIONARIES/ca/ca-valencia.aff \
+             $$DICTIONARIES/ca/ca-valencia.dic \
+             $$DICTIONARIES/cs_CZ/cs_CZ.aff \
+             $$DICTIONARIES/cs_CZ/cs_CZ.dic \
+             $$DICTIONARIES/da_DK/da_DK.aff \
+             $$DICTIONARIES/da_DK/da_DK.dic \
+             $$DICTIONARIES/de/de_AT_frami.aff \
+             $$DICTIONARIES/de/de_AT_frami.dic \
+             $$DICTIONARIES/de/de_CH_frami.aff \
+             $$DICTIONARIES/de/de_CH_frami.dic \
+             $$DICTIONARIES/de/de_DE_frami.aff \
+             $$DICTIONARIES/de/de_DE_frami.dic \
+             $$DICTIONARIES/el_GR/el_GR.aff \
+             $$DICTIONARIES/el_GR/el_GR.dic \
+             $$DICTIONARIES/en/en_AU.aff \
+             $$DICTIONARIES/en/en_AU.dic \
+             $$DICTIONARIES/en/en_CA.aff \
+             $$DICTIONARIES/en/en_CA.dic \
+             $$DICTIONARIES/en/en_GB.aff \
+             $$DICTIONARIES/en/en_GB.dic \
+             $$DICTIONARIES/en/en_US.aff \
+             $$DICTIONARIES/en/en_US.dic \
+             $$DICTIONARIES/en/en_ZA.aff \
+             $$DICTIONARIES/en/en_ZA.dic \
+             $$DICTIONARIES/es/es_ANY.aff \
+             $$DICTIONARIES/es/es_ANY.dic \
+             $$DICTIONARIES/et_EE/et_EE.aff \
+             $$DICTIONARIES/et_EE/et_EE.dic \
+             $$DICTIONARIES/gd_GB/gd_GB.aff \
+             $$DICTIONARIES/gd_GB/gd_GB.dic \
+             $$DICTIONARIES/gl/gl_ES.aff \
+             $$DICTIONARIES/gl/gl_ES.dic \
+             $$DICTIONARIES/gug/gug.aff \
+             $$DICTIONARIES/gug/gug.dic \
+             $$DICTIONARIES/he_IL/he_IL.aff \
+             $$DICTIONARIES/he_IL/he_IL.dic \
+             $$DICTIONARIES/hi_IN/hi_IN.aff \
+             $$DICTIONARIES/hi_IN/hi_IN.dic \
+             $$DICTIONARIES/hr_HR/hr_HR.aff \
+             $$DICTIONARIES/hr_HR/hr_HR.dic \
+             $$DICTIONARIES/hu_HU/hu_HU.aff \
+             $$DICTIONARIES/hu_HU/hu_HU.dic \
+             $$DICTIONARIES/is/is.aff \
+             $$DICTIONARIES/is/is.dic \
+             $$DICTIONARIES/it_IT/it_IT.aff \
+             $$DICTIONARIES/it_IT/it_IT.dic \
+             $$DICTIONARIES/kmr_Latn/kmr_Latn.aff \
+             $$DICTIONARIES/kmr_Latn/kmr_Latn.dic \
+             $$DICTIONARIES/lo_LA/lo_LA.aff \
+             $$DICTIONARIES/lo_LA/lo_LA.dic \
+             $$DICTIONARIES/lt_LT/lt.aff \
+             $$DICTIONARIES/lt_LT/lt.dic \
+             $$DICTIONARIES/lv_LV/lv_LV.aff \
+             $$DICTIONARIES/lv_LV/lv_LV.dic \
+             $$DICTIONARIES/ne_NP/ne_NP.aff \
+             $$DICTIONARIES/ne_NP/ne_NP.dic \
+             $$DICTIONARIES/nl_NL/nl_NL.aff \
+             $$DICTIONARIES/nl_NL/nl_NL.dic \
+             $$DICTIONARIES/no/nb_NO.aff \
+             $$DICTIONARIES/no/nb_NO.dic \
+             $$DICTIONARIES/no/nn_NO.aff \
+             $$DICTIONARIES/no/nn_NO.dic \
+             $$DICTIONARIES/oc_FR/oc_FR.aff \
+             $$DICTIONARIES/oc_FR/oc_FR.dic \
+             $$DICTIONARIES/pl_PL/pl_PL.aff \
+             $$DICTIONARIES/pl_PL/pl_PL.dic \
+             $$DICTIONARIES/pt_BR/pt_BR.aff \
+             $$DICTIONARIES/pt_BR/pt_BR.dic \
+             $$DICTIONARIES/pt_PT/pt_PT.aff \
+             $$DICTIONARIES/pt_PT/pt_PT.dic \
+             $$DICTIONARIES/ro/ro_RO.aff \
+             $$DICTIONARIES/ro/ro_RO.dic \
+             $$DICTIONARIES/ru_RU/ru_RU.aff \
+             $$DICTIONARIES/ru_RU/ru_RU.dic \
+             $$DICTIONARIES/si_LK/si_LK.aff \
+             $$DICTIONARIES/si_LK/si_LK.dic \
+             $$DICTIONARIES/sk_SK/sk_SK.aff \
+             $$DICTIONARIES/sk_SK/sk_SK.dic \
+             $$DICTIONARIES/sl_SI/sl_SI.aff \
+             $$DICTIONARIES/sl_SI/sl_SI.dic \
+             $$DICTIONARIES/sr/sr.aff \
+             $$DICTIONARIES/sr/sr.dic \
+             $$DICTIONARIES/sr/sr-Latn.aff \
+             $$DICTIONARIES/sr/sr-Latn.dic \
+             $$DICTIONARIES/sw_TZ/sw_TZ.aff \
+             $$DICTIONARIES/sw_TZ/sw_TZ.dic \
+             $$DICTIONARIES/te_IN/te_IN.aff \
+             $$DICTIONARIES/te_IN/te_IN.dic \
+             $$DICTIONARIES/uk_UA/uk_UA.aff \
+             $$DICTIONARIES/uk_UA/uk_UA.dic \
+             $$DICTIONARIES/vi/vi_VN.aff \
+             $$DICTIONARIES/vi/vi_VN.dic
 }
 
 macx {
@@ -712,7 +714,7 @@ copycharts.files        = Charts/*
 copycharts.path         = Dooble.d/Charts
 copydata.files		= Data/*.txt
 copydata.path		= Dooble.d/Data
-copydocumentation.extra	= cp ./Documentation/Documents/*.pdf Dooble.d/Documentation/. && cp ./Documentation/TO-DO Dooble.d/Documentation/.
+copydocumentation.extra	= cp ./Documentation/Documents/*.pdf Dooble.d/Documentation/. && cp ./Documentation/REMINDERS Dooble.d/Documentation/.
 copydocumentation.path	= Dooble.d/Documentation
 copydooble.extra	= cp -r ./Dooble.app Dooble.d/.
 copydooble.path		= Dooble.d
@@ -720,7 +722,7 @@ copyinfoplist.extra	= cp Data/Info.plist Dooble.d/Dooble.app/Contents/.
 copyinfoplist.path	= Dooble.d
 macdeployqt.extra	= $$[QT_INSTALL_BINS]/macdeployqt Dooble.d/Dooble.app -executable=Dooble.d/Dooble.app/Contents/MacOS/Dooble
 macdeployqt.path	= Dooble.app
-purgeheaders.extra	= rm -fr Dooble.d/Dooble.app/Contents/Frameworks/QtWebEngineCore.framework/Headers && rm -fr Dooble.d/Dooble.app/Contents/Frameworks/QtWebEngineCore.framework/Versions/5/Headers 
+purgeheaders.extra	= rm -fr Dooble.d/Dooble.app/Contents/Frameworks/QtWebEngineCore.framework/Headers && rm -fr Dooble.d/Dooble.app/Contents/Frameworks/QtWebEngineCore.framework/Versions/5/Headers
 purgeheaders.path	= Dooble.d
 preinstall.extra	= rm -fr Dooble.d/Dooble.app
 preinstall.path		= Dooble.d
@@ -739,12 +741,15 @@ INSTALLS	= copycharts \
 }
 
 macx:app_bundle {
+isEmpty(CONVERT_DICT) {
+} else {
 for (base_path, dict_base_paths) {
 base_path_splitted = $$split(base_path, /)
 base_name = $$last(base_path_splitted)
-binary_dict_files.files += $${DICTIONARIES_DIR}/$${base_name}.bdic
+binary_dict_files.files += $${WEB_DICTIONARIES}/$${base_name}.bdic
 }
 
-binary_dict_files.path = Contents/Resources/$$DICTIONARIES_DIR
+binary_dict_files.path = Contents/Resources/$$WEB_DICTIONARIES
 QMAKE_BUNDLE_DATA += binary_dict_files
+}
 }

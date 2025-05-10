@@ -86,6 +86,10 @@ dooble_address_widget_completer::dooble_address_widget_completer
 	  SIGNAL(applied(void)),
 	  this,
 	  SLOT(slot_settings_applied(void)));
+  connect(m_popup,
+	  SIGNAL(clicked(const QModelIndex &)),
+	  this,
+	  SLOT(slot_clicked(const QModelIndex &)));
   connect(qobject_cast<dooble_address_widget *> (parent),
 	  SIGNAL(returnPressed(void)),
 	  &m_text_edited_timer,
@@ -94,14 +98,11 @@ dooble_address_widget_completer::dooble_address_widget_completer
 	  SIGNAL(textEdited(const QString &)),
 	  &m_text_edited_timer,
 	  SLOT(start(void)));
-  connect(m_popup,
-	  SIGNAL(clicked(const QModelIndex &)),
-	  this,
-	  SLOT(slot_clicked(const QModelIndex &)));
   setCaseSensitivity(Qt::CaseInsensitive);
   setCompletionColumn(0);
   setCompletionMode(QCompleter::UnfilteredPopupCompletion);
   setFilterMode(Qt::MatchContains);
+  setModel(m_model);
   setModelSorting(QCompleter::UnsortedModel);
   setPopup(m_popup);
   setWrapAround(false);
@@ -121,8 +122,8 @@ int dooble_address_widget_completer::levenshtein_distance
   else if(str2.isEmpty())
     return str1.length();
 
-  QChar str1_c = QChar(0);
-  QChar str2_c = QChar(0);
+  auto str1_c = QChar(0);
+  auto str2_c = QChar(0);
   QVector<QVector<int> > matrix(str1.length() + 1,
 				QVector<int> (str2.length() + 1));
   int cost = 0;
@@ -199,9 +200,9 @@ void dooble_address_widget_completer::complete(const QString &text)
 
   if(text.trimmed().isEmpty())
     {
-      auto j = qMin(s_model->rowCount(),
-		    2 * static_cast<int> (dooble_page::ConstantsEnum::
-					  MAXIMUM_HISTORY_ITEMS));
+      auto const j = qMin(s_model->rowCount(),
+			  2 * static_cast<int> (dooble_page::ConstantsEnum::
+						MAXIMUM_HISTORY_ITEMS));
 
       for(int i = 0; i < j; i++)
 	if(s_model->item(i, 0))
@@ -216,7 +217,7 @@ void dooble_address_widget_completer::complete(const QString &text)
   else
     {
       QMultiMap<int, QStandardItem *> map;
-      auto c(text.toLower().trimmed());
+      auto const c(text.toLower().trimmed());
 
       for(int i = 0; i < s_model->rowCount(); i++)
 	if(s_model->item(i, 0))
@@ -249,7 +250,7 @@ void dooble_address_widget_completer::complete(const QString &text)
     {
       if(completionMode() == QCompleter::UnfilteredPopupCompletion)
 	{
-	  auto height = 2 * m_popup->frameWidth() +
+	  auto const height = 2 * m_popup->frameWidth() +
 	    m_popup->horizontalHeader()->height() +
 	    m_popup->rowHeight(0) *
 	    qMin(m_model->rowCount(),
@@ -261,7 +262,6 @@ void dooble_address_widget_completer::complete(const QString &text)
 	  m_popup->setMinimumHeight(height);
 	  setMaxVisibleItems(m_model->rowCount());
 	  QCompleter::complete();
-	  m_popup->setCurrentIndex(QModelIndex());
 	}
       else
 	{
@@ -277,7 +277,7 @@ void dooble_address_widget_completer::complete(const QString &text)
 
 void dooble_address_widget_completer::remove_item(const QUrl &url)
 {
-  auto list(s_model->findItems(url.toString()));
+  auto const list(s_model->findItems(url.toString()));
 
   if(!list.isEmpty())
     if(list.at(0))
@@ -289,7 +289,7 @@ void dooble_address_widget_completer::remove_item(const QUrl &url)
 void dooble_address_widget_completer::set_item_icon(const QIcon &icon,
 						    const QUrl &url)
 {
-  auto list(s_model->findItems(url.toString()));
+  auto const list(s_model->findItems(url.toString()));
 
   if(!list.isEmpty())
     if(list.at(0))
@@ -319,22 +319,14 @@ void dooble_address_widget_completer::slot_history_cleared(void)
 void dooble_address_widget_completer::slot_settings_applied(void)
 {
   if(dooble_settings::setting("show_address_widget_completer").toBool())
-    {
-      if(m_model != model())
-	{
-	  auto mode = dooble_settings::setting
-	    ("address_widget_completer_mode_index").toInt() == 0 ?
-	    QCompleter::InlineCompletion :
-	    QCompleter::UnfilteredPopupCompletion;
-
-	  setCompletionMode(mode);
-	  setModel(m_model);
-	}
-    }
+    setCompletionMode
+      (dooble_settings::setting("address_widget_completer_mode_index").
+       toInt() == 0 ?
+       QCompleter::InlineCompletion : QCompleter::UnfilteredPopupCompletion);
   else
     {
+      m_model->clear();
       setCompletionMode(QCompleter::UnfilteredPopupCompletion);
-      setModel(nullptr);
     }
 }
 
@@ -344,7 +336,7 @@ void dooble_address_widget_completer::slot_text_edited_timeout(void)
      !parent())
     return;
 
-  auto text(qobject_cast<dooble_address_widget *> (parent())->text());
+  auto const text(qobject_cast<dooble_address_widget *> (parent())->text());
 
   if(text.trimmed().isEmpty())
     {

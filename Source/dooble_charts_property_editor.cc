@@ -41,8 +41,8 @@
 
 #include <limits>
 
-static void find_recursive_items(QStandardItem *item,
-				 QList<QStandardItem *> &list)
+static void find_recursive_items
+(QStandardItem *item, QList<QStandardItem *> &list)
 {
   if(!item)
     return;
@@ -57,7 +57,7 @@ static void find_recursive_items(QStandardItem *item,
 QSize dooble_charts_property_editor_model_delegate::
 sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const
 {
-  auto property = dooble_charts::Properties
+  auto const property = dooble_charts::Properties
     (index.data(Qt::ItemDataRole(Qt::UserRole + 1)).toInt());
   auto size(QStyledItemDelegate::sizeHint(option, index));
 
@@ -89,7 +89,7 @@ createEditor(QWidget *parent,
 	     const QStyleOptionViewItem &option,
 	     const QModelIndex &index) const
 {
-  auto property = dooble_charts::Properties
+  auto const property = dooble_charts::Properties
     (index.data(Qt::ItemDataRole(Qt::UserRole + 1)).toInt());
 
   switch(property)
@@ -178,7 +178,7 @@ createEditor(QWidget *parent,
 		this,
 		SLOT(slot_show_color_dialog(void)),
 		Qt::QueuedConnection);
-	editor->setProperty("property", property);
+	editor->setProperty("property", static_cast<int> (property));
 	editor->setStyleSheet
 	  (QString("QPushButton {background-color: %1;}").
 	   arg(index.data().toString()));
@@ -200,7 +200,7 @@ createEditor(QWidget *parent,
 		this,
 		SLOT(slot_show_font_dialog(void)),
 		Qt::QueuedConnection);
-	editor->setProperty("property", property);
+	editor->setProperty("property", static_cast<int> (property));
 	editor->setStyleSheet
 	  (QString("QPushButton {background-color: %1;}").
 	   arg(index.data().toString()));
@@ -293,34 +293,29 @@ createEditor(QWidget *parent,
       }
     case dooble_charts::Properties::DATA_SOURCE_ADDRESS:
       {
-	auto editor = new QFrame(parent);
-	auto line_edit = new QLineEdit(editor);
-	auto push_button = new QPushButton(tr("Select"), editor);
+	auto completer = new QCompleter(parent);
+	auto line_edit = new QLineEdit(parent);
+	auto model = new QFileSystemModel(parent);
 
-	connect(push_button,
-		SIGNAL(clicked(void)),
-		this,
-		SLOT(slot_show_file_dialog(void)),
-		Qt::QueuedConnection);
-	delete editor->layout();
-	editor->setAutoFillBackground(true);
-	editor->setLayout(new QHBoxLayout());
-	editor->layout()->addWidget(line_edit);
-	editor->layout()->addWidget(push_button);
-	editor->layout()->setContentsMargins(0, 0, 0, 0);
-	editor->layout()->setSpacing(0);
-	line_edit->setObjectName("source");
+	completer->setCaseSensitivity(Qt::CaseInsensitive);
+	completer->setCompletionRole(QFileSystemModel::FileNameRole);
+	completer->setFilterMode(Qt::MatchContains);
+	completer->setModel(model);
+	line_edit->setClearButtonEnabled(true);
+	line_edit->setCompleter(completer);
 #ifdef Q_OS_MACOS
 	line_edit->setMinimumHeight(push_button->height());
 #endif
+ 	line_edit->setObjectName("source");
 	line_edit->setText(index.data().toString());
-	push_button->setProperty("property", property);
-	return editor;
+	line_edit->setToolTip(line_edit->text());
+	model->setRootPath(QDir::homePath());
+	return line_edit;
       }
     case dooble_charts::Properties::DATA_SOURCE_READ_RATE:
       {
+	auto const list(index.data().toString().split("/"));
 	auto editor = new QFrame(parent);
-	auto list(index.data().toString().split("/"));
 	auto spin_box_1 = new QSpinBox(editor);
 	auto spin_box_2 = new QSpinBox(editor);
 
@@ -440,6 +435,7 @@ void dooble_charts_property_editor_model_delegate::setModelData
 	  if(line_edit)
 	    {
 	      model->setData(index, line_edit->text());
+	      model->setData(index, line_edit->text(), Qt::ToolTipRole);
 	      return;
 	    }
 
@@ -448,8 +444,8 @@ void dooble_charts_property_editor_model_delegate::setModelData
 
 	  if(spin_box_1 && spin_box_2)
 	    {
-	      auto value1 = spin_box_1->value();
-	      auto value2 = spin_box_2->value();
+	      auto const value1 = spin_box_1->value();
+	      auto const value2 = spin_box_2->value();
 
 	      model->setData
 		(index, QString("%1 / %2").arg(value1).arg(value2));
@@ -468,15 +464,6 @@ void dooble_charts_property_editor_model_delegate::slot_show_color_dialog(void)
   if(editor)
     emit show_color_dialog
       (dooble_charts::Properties(editor->property("property").toInt()));
-}
-
-void dooble_charts_property_editor_model_delegate::slot_show_file_dialog(void)
-{
-  auto editor = qobject_cast<QPushButton *> (sender());
-
-  if(editor)
-    emit show_file_dialog
-      (editor, dooble_charts::Properties(editor->property("property").toInt()));
 }
 
 void dooble_charts_property_editor_model_delegate::slot_show_font_dialog(void)
@@ -530,21 +517,22 @@ dooble_charts_property_editor_model(QObject *parent):
 	{
 	  chart_margins = new QStandardItem
 	    (dooble_charts::s_chart_properties_strings[i]);
-	  chart_margins->setData(dooble_charts::Properties(i));
+	  chart_margins->setData
+	    (static_cast<int> (dooble_charts::Properties(i)));
 	  chart_margins->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
 	  chart->appendRow(chart_margins);
 	  continue;
 	}
 
       QList<QStandardItem *> list;
+      auto const offset = i;
       auto item = new QStandardItem
 	(dooble_charts::s_chart_properties_strings[i]);
-      auto offset = i;
 
       item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
       list << item;
       item = new QStandardItem();
-      item->setData(dooble_charts::Properties(offset));
+      item->setData(static_cast<int> (dooble_charts::Properties(offset)));
       item->setFlags
 	(Qt::ItemIsEditable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
 
@@ -629,14 +617,14 @@ dooble_charts_property_editor_model(QObject *parent):
   for(int i = 0; !dooble_charts::s_axis_properties_strings[i].isEmpty(); i++)
     {
       QList<QStandardItem *> list;
+      auto const offset = 4 + chart->rowCount() + i;
       auto item = new QStandardItem
 	(dooble_charts::s_axis_properties_strings[i]);
-      auto offset = 4 + chart->rowCount() + i;
 
       item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
       list << item;
       item = new QStandardItem();
-      item->setData(dooble_charts::Properties(offset));
+      item->setData(static_cast<int> (dooble_charts::Properties(offset)));
       item->setFlags
 	(Qt::ItemIsEditable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
 
@@ -685,17 +673,17 @@ dooble_charts_property_editor_model(QObject *parent):
   for(int i = 0; !dooble_charts::s_axis_properties_strings[i].isEmpty(); i++)
     {
       QList<QStandardItem *> list;
-      auto item = new QStandardItem
-	(dooble_charts::s_axis_properties_strings[i]);
-      auto offset = 4 +
+      auto const offset = 4 +
 	chart_axis_x->rowCount() +
 	chart->rowCount() +
 	i;
+      auto item = new QStandardItem
+	(dooble_charts::s_axis_properties_strings[i]);
 
       item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
       list << item;
       item = new QStandardItem();
-      item->setData(dooble_charts::Properties(offset));
+      item->setData(static_cast<int> (dooble_charts::Properties(offset)));
       item->setFlags
 	(Qt::ItemIsEditable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
 
@@ -744,18 +732,18 @@ dooble_charts_property_editor_model(QObject *parent):
   for(int i = 0; !dooble_charts::s_data_properties_strings[i].isEmpty(); i++)
     {
       QList<QStandardItem *> list;
-      auto item = new QStandardItem
-	(dooble_charts::s_data_properties_strings[i]);
-      auto offset = 4 +
+      auto const offset = 4 +
 	chart->rowCount() +
 	chart_axis_x->rowCount() +
 	chart_axis_y->rowCount() +
 	i;
+      auto item = new QStandardItem
+	(dooble_charts::s_data_properties_strings[i]);
 
       item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
       list << item;
       item = new QStandardItem();
-      item->setData(dooble_charts::Properties(offset));
+      item->setData(static_cast<int> (dooble_charts::Properties(offset)));
       item->setFlags
 	(Qt::ItemIsEditable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
 
@@ -786,19 +774,19 @@ dooble_charts_property_editor_model(QObject *parent):
   for(int i = 0; !dooble_charts::s_legend_properties_strings[i].isEmpty(); i++)
     {
       QList<QStandardItem *> list;
-      auto item = new QStandardItem
-	(dooble_charts::s_legend_properties_strings[i]);
-      auto offset = 4 +
+      auto const offset = 4 +
 	chart->rowCount() +
 	chart_axis_x->rowCount() +
 	chart_axis_y->rowCount() +
 	data->rowCount() +
 	i;
+      auto item = new QStandardItem
+	(dooble_charts::s_legend_properties_strings[i]);
 
       item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
       list << item;
       item = new QStandardItem();
-      item->setData(dooble_charts::Properties(offset));
+      item->setData(static_cast<int> (dooble_charts::Properties(offset)));
       item->setFlags
 	(Qt::ItemIsEditable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
 
@@ -857,7 +845,7 @@ dooble_charts_property_editor_model::~dooble_charts_property_editor_model()
 QList<QStandardItem *> dooble_charts_property_editor_model::
 find_all_child_items(const QString &text) const
 {
-  auto list(findItems(text));
+  auto const list(findItems(text));
 
   if(list.isEmpty())
     return list;
@@ -884,7 +872,7 @@ find_all_child_items(const QString &text) const
 QStandardItem *dooble_charts_property_editor_model::
 find_specific_item(const QString &text) const
 {
-  auto list(findItems(text, Qt::MatchExactly | Qt::MatchRecursive));
+  auto const list(findItems(text, Qt::MatchExactly | Qt::MatchRecursive));
 
   if(!list.isEmpty())
     return list.at(0);
@@ -895,12 +883,12 @@ find_specific_item(const QString &text) const
 QStandardItem *dooble_charts_property_editor_model::item_from_property
 (const dooble_charts::Properties property, const int column) const
 {
-  auto list(find_all_child_items(tr("Chart")) +
-	    find_all_child_items(tr("Chart X-Axis")) +
-	    find_all_child_items(tr("Chart Y-Axis")) +
-	    find_all_child_items(tr("Data")) +
-	    find_all_child_items(tr("Legend")) +
-	    find_all_child_items(tr("XY Series")));
+  auto const list(find_all_child_items(tr("Chart")) +
+		  find_all_child_items(tr("Chart X-Axis")) +
+		  find_all_child_items(tr("Chart Y-Axis")) +
+		  find_all_child_items(tr("Data")) +
+		  find_all_child_items(tr("Legend")) +
+		  find_all_child_items(tr("XY Series")));
 
   for(int i = 0; i < list.size(); i++)
     if(list.at(i))
@@ -911,7 +899,7 @@ QStandardItem *dooble_charts_property_editor_model::item_from_property
 	  if(!item)
 	    continue;
 
-	  auto p = dooble_charts::Properties
+	  auto const p = dooble_charts::Properties
 	    (item->data(Qt::ItemDataRole(Qt::UserRole + 1)).toInt());
 
 	  if(p == property)
@@ -953,14 +941,6 @@ dooble_charts_property_editor(QTreeView *tree):QWidget(tree)
 	 SIGNAL(show_color_dialog(const dooble_charts::Properties)),
 	 this,
 	 SLOT(slot_show_color_dialog(const dooble_charts::Properties)),
-	 Qt::QueuedConnection);
-      connect
-	(item_delegate,
-	 SIGNAL(show_file_dialog(QPushButton *,
-				 const dooble_charts::Properties)),
-	 this,
-	 SLOT(slot_show_file_dialog(QPushButton *,
-				    const dooble_charts::Properties)),
 	 Qt::QueuedConnection);
       connect
 	(item_delegate,
@@ -1114,14 +1094,14 @@ void dooble_charts_property_editor::prepare_generic(dooble_charts *chart)
   if(item && item->parent())
     {
       m_tree->setFirstColumnSpanned
-	(dooble_charts::Properties::CHART_MARGINS,
+	(static_cast<int> (dooble_charts::Properties::CHART_MARGINS),
 	 item->parent()->index(),
 	 true);
 
       for(int i = 0; i < 4; i++)
 	if(item->child(i, 1))
 	  {
-	    auto property = dooble_charts::Properties
+	    auto const property = dooble_charts::Properties
 	      (item->child(i, 1)->data(Qt::ItemDataRole(Qt::UserRole + 1)).
 	       toInt());
 
@@ -1252,7 +1232,7 @@ void dooble_charts_property_editor::slot_show_color_dialog
 
   QColorDialog dialog(this);
 
-  dialog.setCurrentColor(QColor(item->text()));
+  dialog.setCurrentColor(QColor(item->text().remove('&').trimmed()));
 
   if(dialog.exec() == QDialog::Accepted)
     {
@@ -1261,42 +1241,6 @@ void dooble_charts_property_editor::slot_show_color_dialog
     }
 }
 
-void dooble_charts_property_editor::slot_show_file_dialog
-(QPushButton *push_button, const dooble_charts::Properties property)
-{
-  if(!m_model)
-    return;
-
-  auto item = m_model->item_from_property(property, 1);
-
-  if(!item)
-    return;
-
-  QFileDialog dialog(this);
-
-  dialog.selectFile(item->text());
-  dialog.setOption(QFileDialog::DontUseNativeDialog);
-
-  if(dialog.exec() == QDialog::Accepted)
-    {
-      item->setText(dialog.selectedFiles().value(0));
-      item->setToolTip(item->text());
-      m_model->setData(item->index(), item->text());
-
-      if(push_button)
-	{
-	  auto frame = qobject_cast<QFrame *> (push_button->parent());
-
-	  if(frame)
-	    {
-	      auto line_edit = frame->findChild<QLineEdit *> ("source");
-
-	      if(line_edit)
-		line_edit->setText(item->text());
-	    }
-	}
-    }
-}
 
 void dooble_charts_property_editor::slot_show_font_dialog
 (const dooble_charts::Properties property)

@@ -50,7 +50,7 @@ dooble_web_engine_view::dooble_web_engine_view
   dooble::s_jar->set_web_engine_view(this);
   m_dialog_requests_timer.setInterval(100);
   m_dialog_requests_timer.setSingleShot(true);
-  m_is_private = QWebEngineProfile::defaultProfile() != web_engine_profile &&
+  m_is_private = dooble::s_default_web_engine_profile != web_engine_profile &&
     web_engine_profile;
 
   if(m_is_private)
@@ -66,6 +66,7 @@ dooble_web_engine_view::dooble_web_engine_view
 	  SIGNAL(certificate_exception_accepted(const QUrl &)),
 	  this,
 	  SLOT(slot_certificate_exception_accepted(const QUrl &)));
+#if (QT_VERSION < QT_VERSION_CHECK(6, 8, 0))
   connect(m_page,
 	  SIGNAL(featurePermissionRequestCanceled(const QUrl &,
 						  QWebEnginePage::Feature)),
@@ -78,6 +79,12 @@ dooble_web_engine_view::dooble_web_engine_view
 	  this,
 	  SIGNAL(featurePermissionRequested(const QUrl &,
 					    QWebEnginePage::Feature)));
+#else
+  connect(m_page,
+	  SIGNAL(permissionRequested(QWebEnginePermission)),
+	  this,
+	  SIGNAL(permissionRequested(QWebEnginePermission)));
+#endif
 #if (QT_VERSION >= QT_VERSION_CHECK(5, 12, 0))
   connect(m_page,
 	  SIGNAL(printRequested(void)),
@@ -101,7 +108,7 @@ dooble_web_engine_view::dooble_web_engine_view
 	  this,
 	  SLOT(slot_load_started(void)));
 
-  if(QWebEngineProfile::defaultProfile() != m_page->profile())
+  if(dooble::s_default_web_engine_profile != m_page->profile())
 #if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
     connect(m_page->profile(),
 	    SIGNAL(downloadRequested(QWebEngineDownloadItem *)),
@@ -160,8 +167,8 @@ QWebEngineView *dooble_web_engine_view::createWindow
 
   if(type == QWebEnginePage::WebBrowserWindow ||
      type == QWebEnginePage::WebDialog)
-    if(dooble_settings::setting("javascript").toBool() &&
-       dooble_settings::setting("javascript_block_popups").toBool())
+    if(dooble_settings::setting("javascript_block_popups").toBool() &&
+       dooble_settings::site_has_javascript_disabled(url()) == false)
       {
 	auto url(QUrl::fromUserInput(this->url().host()));
 
@@ -222,7 +229,7 @@ void dooble_web_engine_view::contextMenuEvent(QContextMenuEvent *event)
   ** Change some icons.
   */
 
-  auto icon_set(dooble_settings::setting("icon_set").toString());
+  auto const icon_set(dooble_settings::setting("icon_set").toString());
 
   if((action = m_page->action(QWebEnginePage::Back)))
     action->setIcon(QIcon(QString(":/%1/20/previous.png").arg(icon_set)));
@@ -291,9 +298,9 @@ void dooble_web_engine_view::contextMenuEvent(QContextMenuEvent *event)
      SLOT(slot_open_link_in_current_page(void)));
 
 #if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
-  auto context_menu_data = m_page->contextMenuData();
+  auto const context_menu_data = m_page->contextMenuData();
 #else
-  auto context_menu_data = lastContextMenuRequest();
+  auto const context_menu_data = lastContextMenuRequest();
 #endif
 
 #if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
@@ -457,7 +464,7 @@ void dooble_web_engine_view::contextMenuEvent(QContextMenuEvent *event)
     {
       menu->addSeparator();
 
-      auto actions(dooble::s_search_engines_window->actions());
+      auto const actions(dooble::s_search_engines_window->actions());
       auto sub_menu = menu->addMenu("Search Selected Text");
 
       if(!actions.isEmpty() && !selectedText().isEmpty())
@@ -539,9 +546,9 @@ void dooble_web_engine_view::scroll(const qreal value)
   if(!settings())
     return;
 
-  auto enabled = settings()->testAttribute
+  auto const enabled = settings()->testAttribute
     (QWebEngineSettings::JavascriptEnabled);
-  auto scroll_position = m_page->scrollPosition();
+  auto const scroll_position = m_page->scrollPosition();
 
   if(!enabled)
     {
@@ -585,10 +592,11 @@ void dooble_web_engine_view::slot_accept_or_block_domain(void)
     }
 }
 
+#if (QT_VERSION < QT_VERSION_CHECK(6, 8, 0))
 void dooble_web_engine_view::set_feature_permission
 (const QUrl &security_origin,
- QWebEnginePage::Feature feature,
- QWebEnginePage::PermissionPolicy policy)
+ const QWebEnginePage::Feature feature,
+ const QWebEnginePage::PermissionPolicy policy)
 {
   dooble::s_settings->set_site_feature_permission
     (security_origin,
@@ -596,6 +604,24 @@ void dooble_web_engine_view::set_feature_permission
      policy == QWebEnginePage::PermissionGrantedByUser);
   m_page->setFeaturePermission(security_origin, feature, policy);
 }
+#else
+void dooble_web_engine_view::set_feature_permission
+(const QUrl &security_origin,
+ const QWebEnginePermission::PermissionType feature,
+ const QWebEnginePermission::State policy)
+{
+  dooble::s_settings->set_site_feature_permission
+    (security_origin,
+     feature,
+     policy == QWebEnginePermission::State::Granted);
+
+  foreach(auto permission,
+	  m_page->profile()->listPermissionsForOrigin(security_origin))
+    if(feature == permission.permissionType())
+      policy == QWebEnginePermission::State::Granted ?
+	permission.grant() : permission.deny();
+}
+#endif
 
 void dooble_web_engine_view::slot_certificate_exception_accepted
 (const QUrl &url)
@@ -634,7 +660,7 @@ void dooble_web_engine_view::slot_open_link_in_current_page(void)
   if(!action)
     return;
 
-  auto url(action->property("url").toUrl());
+  auto const url(action->property("url").toUrl());
 
   if(!url.isEmpty() && url.isValid())
     emit open_link_in_current_page(url);
@@ -647,7 +673,7 @@ void dooble_web_engine_view::slot_open_link_in_new_private_window(void)
   if(!action)
     return;
 
-  auto url(action->property("url").toUrl());
+  auto const url(action->property("url").toUrl());
 
   if(!url.isEmpty() && url.isValid())
     emit open_link_in_new_private_window(url);
@@ -660,7 +686,7 @@ void dooble_web_engine_view::slot_open_link_in_new_window(void)
   if(!action)
     return;
 
-  auto url(action->property("url").toUrl());
+  auto const url(action->property("url").toUrl());
 
   if(!url.isEmpty() && url.isValid())
     emit open_link_in_new_window(url);
@@ -673,7 +699,7 @@ void dooble_web_engine_view::slot_open_link_in_new_tab(void)
   if(!action)
     return;
 
-  auto url(action->property("url").toUrl());
+  auto const url(action->property("url").toUrl());
 
   if(!url.isEmpty() && url.isValid())
     emit open_link_in_new_tab(url);
@@ -708,7 +734,7 @@ void dooble_web_engine_view::slot_search(void)
 
   if(!url.isEmpty() && url.isValid())
     {
-      auto text(action->property("selected_text").toString());
+      auto const text(action->property("selected_text").toString());
 
       if(url.hasQuery())
 	url.setQuery(url.query().append(QString("\"%1\"").arg(text)));

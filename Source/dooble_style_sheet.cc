@@ -84,7 +84,7 @@ void dooble_style_sheet::inject(dooble_web_engine_page *web_engine_page)
 
       if(it.key().second == web_engine_page->simplified_url())
 	{
-	  auto style_sheet
+	  auto const style_sheet
 	    (QString::fromUtf8("(function() {"
 			       "css = document.createElement('style');"
 			       "css.id = '%1';"
@@ -107,7 +107,7 @@ void dooble_style_sheet::inject(dooble_web_engine_page *web_engine_page)
 	}
       else
 	{
-	  auto style_sheet
+	  auto const style_sheet
 	    (QString::fromUtf8("(function() {"
 			       "var element = document.getElementById('%1');"
 			       "if(element) element.outerHTML = '';"
@@ -164,7 +164,7 @@ void dooble_style_sheet::purge(void)
 {
   s_style_sheets.clear();
 
-  auto database_name(dooble_database_utilities::database_name());
+  auto const database_name(dooble_database_utilities::database_name());
 
   {
     auto db = QSqlDatabase::addDatabase("QSQLITE", database_name);
@@ -193,12 +193,12 @@ void dooble_style_sheet::slot_add(void)
   if(!m_web_engine_page)
     return;
 
-  auto name(m_ui.name->text().trimmed());
+  auto const name(m_ui.name->text().trimmed());
 
   if(m_ui.style_sheet->toPlainText().trimmed().isEmpty() || name.isEmpty())
     return;
 
-  auto style_sheet
+  auto const style_sheet
     (QString::fromUtf8("(function() {"
 		       "css = document.createElement('style');"
 		       "css.id = '%1';"
@@ -240,7 +240,7 @@ void dooble_style_sheet::slot_add(void)
   if(!dooble::s_cryptography || !dooble::s_cryptography->authenticated())
     return;
 
-  auto database_name(dooble_database_utilities::database_name());
+  auto const database_name(dooble_database_utilities::database_name());
 
   {
     auto db = QSqlDatabase::addDatabase("QSQLITE", database_name);
@@ -307,16 +307,16 @@ void dooble_style_sheet::slot_add(void)
 
 void dooble_style_sheet::slot_item_selection_changed(void)
 {
-  auto list(m_ui.names->selectedItems());
+  auto const list(m_ui.names->selectionModel()->selectedRows());
 
-  if(!list.value(0) || !m_web_engine_page)
+  if(!list.value(0).isValid() || !m_web_engine_page)
     {
       m_ui.name->clear();
       m_ui.style_sheet->clear();
       return;
     }
 
-  m_ui.name->setText(list.at(0)->text());
+  m_ui.name->setText(list.at(0).data().toString());
   m_ui.style_sheet->setPlainText
     (s_style_sheets.
      value(QPair<QString, QUrl> (m_ui.name->text(),
@@ -328,7 +328,7 @@ void dooble_style_sheet::slot_populate(void)
   if(!dooble::s_cryptography || !dooble::s_cryptography->authenticated())
     return;
 
-  auto database_name(dooble_database_utilities::database_name());
+  auto const database_name(dooble_database_utilities::database_name());
 
   {
     auto db = QSqlDatabase::addDatabase("QSQLITE", database_name);
@@ -384,19 +384,19 @@ void dooble_style_sheet::slot_remove(void)
   if(!m_web_engine_page)
     return;
 
-  auto list(m_ui.names->selectedItems());
+  auto const list(m_ui.names->selectionModel()->selectedRows());
 
-  if(!list.value(0))
+  if(!list.value(0).isValid())
     return;
 
-  auto name(list.at(0)->text());
-  auto style_sheet
+  auto const name(list.at(0).data().toString());
+  auto const style_sheet
     (QString::fromUtf8("(function() {"
 		       "var element = document.getElementById('%1');"
 		       "if(element) element.outerHTML = '';"
 		       "delete element;})()").arg(name));
 
-  delete m_ui.names->takeItem(m_ui.names->row(list.at(0)));
+  delete m_ui.names->takeItem(list.at(0).row());
   m_web_engine_page->runJavaScript
     (style_sheet, QWebEngineScript::ApplicationWorld);
 #if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
@@ -412,7 +412,7 @@ void dooble_style_sheet::slot_remove(void)
   if(!dooble::s_cryptography || !dooble::s_cryptography->authenticated())
     return;
 
-  auto database_name(dooble_database_utilities::database_name());
+  auto const database_name(dooble_database_utilities::database_name());
 
   {
     auto db = QSqlDatabase::addDatabase("QSQLITE", database_name);

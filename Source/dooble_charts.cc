@@ -35,7 +35,6 @@
 #include "dooble_ui_utilities.h"
 
 #include <QDir>
-#include <QMetaType>
 #include <QPrintPreviewDialog>
 #include <QSqlQuery>
 #ifdef DOOBLE_QTCHARTS_PRESENT
@@ -185,7 +184,7 @@ dooble_charts::~dooble_charts()
 QChart::AnimationOptions dooble_charts::string_to_chart_animation_options
 (const QString &t)
 {
-  auto text(t.trimmed());
+  auto const text(t.trimmed());
 
   if(text == tr("All"))
     return QChart::AllAnimations;
@@ -199,7 +198,7 @@ QChart::AnimationOptions dooble_charts::string_to_chart_animation_options
 
 QChart::ChartTheme dooble_charts::string_to_chart_theme(const QString &t)
 {
-  auto text(t.trimmed());
+  auto const text(t.trimmed());
 
   if(text == tr("Blue Cerulean"))
     return QChart::ChartThemeBlueCerulean;
@@ -230,7 +229,7 @@ data_properties_for_database(void) const
     {
       it.next();
 
-      auto property(property_to_name(it.key()));
+      auto const property(property_to_name(it.key()));
 
       if(!property.isEmpty())
 	hash[property] = it.value();
@@ -249,7 +248,7 @@ legend_properties_for_database(void) const
     {
       it.next();
 
-      auto property(property_to_name(it.key()));
+      auto const property(property_to_name(it.key()));
 
       if(!property.isEmpty())
 	hash[property] = it.value();
@@ -274,7 +273,7 @@ QHash<QString, QVariant> dooble_charts::properties_for_database(void) const
 
 	continue;
 
-      auto property(property_to_name(it.key()));
+      auto const property(property_to_name(it.key()));
 
       if(!property.isEmpty())
 	hash[property] = it.value();
@@ -293,7 +292,7 @@ x_axis_properties_for_database(void) const
     {
       it.next();
 
-      auto property(property_to_name(it.key()));
+      auto const property(property_to_name(it.key()));
 
       if(!property.isEmpty())
 	hash[property] = it.value();
@@ -312,7 +311,7 @@ y_axis_properties_for_database(void) const
     {
       it.next();
 
-      auto property(property_to_name(it.key()));
+      auto const property(property_to_name(it.key()));
 
       if(!property.isEmpty())
 	hash[property] = it.value();
@@ -611,7 +610,7 @@ y_axis_properties(void) const
 QLegend::MarkerShape dooble_charts::string_to_legend_marker_shape
 (const QString &t)
 {
-  auto text(t.trimmed());
+  auto const text(t.trimmed());
 
   if(text == tr("Circle"))
     return QLegend::MarkerShapeCircle;
@@ -794,7 +793,7 @@ QString dooble_charts::property_to_name
     case dooble_charts::Properties::CHART_TITLE_COLOR:
     case dooble_charts::Properties::CHART_TITLE_FONT:
       {
-	return s_chart_properties_strings[property];
+	return s_chart_properties_strings[static_cast<size_t> (property)];
       }
     case dooble_charts::Properties::CHART_AXIS_X_ALIGNMENT_HORIZONTAL:
     case dooble_charts::Properties::CHART_AXIS_X_ALIGNMENT_VERTICAL:
@@ -819,8 +818,11 @@ QString dooble_charts::property_to_name
     case dooble_charts::Properties::CHART_AXIS_X_TITLE_VISIBLE:
     case dooble_charts::Properties::CHART_AXIS_X_VISIBLE:
       {
-	return s_axis_properties_strings
-	  [property - dooble_charts::Properties::CHART_TITLE_FONT - 1];
+	auto const index = static_cast<size_t> (property) -
+	  static_cast<size_t> (dooble_charts::Properties::CHART_TITLE_FONT) -
+	  static_cast<size_t> (1);
+
+	return s_axis_properties_strings[index];
       }
     case dooble_charts::Properties::CHART_AXIS_Y_ALIGNMENT_HORIZONTAL:
     case dooble_charts::Properties::CHART_AXIS_Y_ALIGNMENT_VERTICAL:
@@ -845,8 +847,12 @@ QString dooble_charts::property_to_name
     case dooble_charts::Properties::CHART_AXIS_Y_TITLE_VISIBLE:
     case dooble_charts::Properties::CHART_AXIS_Y_VISIBLE:
       {
-	return s_axis_properties_strings
-	  [property - dooble_charts::Properties::CHART_AXIS_X_VISIBLE - 1];
+	auto const index = static_cast<size_t> (property) -
+	  static_cast<size_t> (dooble_charts::Properties::
+			       CHART_AXIS_X_VISIBLE) -
+	  static_cast<size_t> (1);
+
+	return s_axis_properties_strings[index];
       }
     case dooble_charts::Properties::DATA_EXTRACTION_SCRIPT:
     case dooble_charts::Properties::DATA_SOURCE_ADDRESS:
@@ -854,8 +860,12 @@ QString dooble_charts::property_to_name
     case dooble_charts::Properties::DATA_SOURCE_READ_RATE:
     case dooble_charts::Properties::DATA_SOURCE_TYPE:
       {
-	return s_data_properties_strings
-	  [property - dooble_charts::Properties::CHART_AXIS_Y_VISIBLE - 1];
+	auto const index = static_cast<size_t> (property) -
+	  static_cast<size_t> (dooble_charts::Properties::
+			       CHART_AXIS_Y_VISIBLE) -
+	  static_cast<size_t> (1);
+
+	return s_data_properties_strings[index];
       }
     case dooble_charts::Properties::LEGEND_ALIGNMENT:
     case dooble_charts::Properties::LEGEND_BACKGROUND_VISIBLE:
@@ -868,8 +878,11 @@ QString dooble_charts::property_to_name
     case dooble_charts::Properties::LEGEND_SHOW_TOOL_TIPS:
     case dooble_charts::Properties::LEGEND_VISIBLE:
       {
-	return s_legend_properties_strings
-	  [property - dooble_charts::Properties::DATA_SOURCE_TYPE - 1];
+	auto const index = static_cast<size_t> (property) -
+	  static_cast<size_t> (dooble_charts::Properties::DATA_SOURCE_TYPE) -
+	  static_cast<size_t> (1);
+
+	return s_legend_properties_strings[index];
       }
     default:
       {
@@ -885,7 +898,7 @@ QString dooble_charts::type_from_database(const QString &name)
   QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
 
   QString type("");
-  auto database_name(dooble_database_utilities::database_name());
+  auto const database_name(dooble_database_utilities::database_name());
 
   {
     auto db = QSqlDatabase::addDatabase("QSQLITE", database_name);
@@ -973,7 +986,7 @@ void dooble_charts::open(const QString &name)
 
   QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
 
-  auto database_name(dooble_database_utilities::database_name());
+  auto const database_name(dooble_database_utilities::database_name());
 
   {
     auto db = QSqlDatabase::addDatabase("QSQLITE", database_name);
@@ -999,12 +1012,12 @@ void dooble_charts::open(const QString &name)
 	if(query.exec())
 	  while(query.next())
 	    {
-	      auto property
+	      auto const property
 		(QString::fromUtf8(QByteArray::
 				   fromBase64(query.value(0).toByteArray())));
-	      auto subset_index = query.value(1).toInt();
-	      auto subset_name(query.value(2).toString().trimmed());
-	      auto value
+	      auto const subset_index = query.value(1).toInt();
+	      auto const subset_name(query.value(2).toString().trimmed());
+	      auto const value
 		(QString::fromUtf8(QByteArray::
 				   fromBase64(query.value(3).toByteArray())));
 
@@ -1438,7 +1451,7 @@ void dooble_charts::purge(void)
 {
   QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
 
-  auto database_name(dooble_database_utilities::database_name());
+  auto const database_name(dooble_database_utilities::database_name());
 
   {
     auto db = QSqlDatabase::addDatabase("QSQLITE", database_name);
@@ -1463,8 +1476,8 @@ void dooble_charts::purge(void)
 
 void dooble_charts::save(QString &error)
 {
-  auto name(properties().value(dooble_charts::Properties::CHART_NAME).
-	    toString().trimmed().toUtf8());
+  auto const name(properties().value(dooble_charts::Properties::CHART_NAME).
+		  toString().trimmed().toUtf8());
 
   if(name.isEmpty())
     {
@@ -1479,7 +1492,7 @@ void dooble_charts::save(QString &error)
 
   QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
 
-  auto database_name(dooble_database_utilities::database_name());
+  auto const database_name(dooble_database_utilities::database_name());
 
   {
     auto db = QSqlDatabase::addDatabase("QSQLITE", database_name);
@@ -1651,7 +1664,7 @@ void dooble_charts::slot_item_changed(QStandardItem *item)
   if(!m_x_axis || !m_y_axis)
     return;
 
-  auto property = dooble_charts::Properties
+  auto const property = dooble_charts::Properties
     (item->data(Qt::ItemDataRole(Qt::UserRole + 1)).toInt());
 
   switch(property)
@@ -1977,7 +1990,8 @@ void dooble_charts::slot_item_changed(QStandardItem *item)
 
 	if(m_property_editor)
 	  {
-	    auto chart_animation_options = string_to_chart_animation_options
+	    auto const chart_animation_options =
+	      string_to_chart_animation_options
 	      (m_property_editor->
 	       property(dooble_charts::Properties::CHART_ANIMATION_OPTIONS).
 	       toString());

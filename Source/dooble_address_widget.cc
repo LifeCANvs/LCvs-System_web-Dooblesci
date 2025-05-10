@@ -25,9 +25,9 @@
 ** DOOBLE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <QDir>
 #include <QMimeData>
 #include <QToolButton>
-#include <QtMath>
 
 #include "dooble.h"
 #include "dooble_address_widget.h"
@@ -40,6 +40,7 @@
 
 dooble_address_widget::dooble_address_widget(QWidget *parent):QLineEdit(parent)
 {
+  m_edited = false;
   m_favorite = new QToolButton(this);
   m_favorite->setAutoRaise(true);
   m_favorite->setCursor(Qt::ArrowCursor);
@@ -70,6 +71,21 @@ dooble_address_widget::dooble_address_widget(QWidget *parent):QLineEdit(parent)
 #endif
   m_information->setToolTip(tr("Site Information (Cookies, etc.)"));
   m_menu = new QMenu(this);
+  m_publish = new QToolButton(this);
+  m_publish->setAutoRaise(true);
+  m_publish->setCursor(Qt::ArrowCursor);
+  m_publish->setEnabled(false);
+  m_publish->setIconSize(QSize(18, 18));
+#ifdef Q_OS_MACOS
+  m_publish->setStyleSheet
+    ("QToolButton {"
+     "border: none;"
+     "padding-bottom: 0px;"
+     "padding-top: 0px;"
+     "}");
+#endif
+  m_publish->setToolTip
+    (tr("Publish Page (%1)").arg(page_publication_directory_name()));
   m_pull_down = new QToolButton(this);
   m_pull_down->setAutoRaise(true);
   m_pull_down->setCursor(Qt::ArrowCursor);
@@ -115,6 +131,10 @@ dooble_address_widget::dooble_address_widget(QWidget *parent):QLineEdit(parent)
 	  SIGNAL(clicked(void)),
 	  this,
 	  SLOT(slot_show_site_information_menu(void)));
+  connect(m_publish,
+	  SIGNAL(clicked(void)),
+	  this,
+	  SIGNAL(publish(void)));
   connect(m_pull_down,
 	  SIGNAL(clicked(void)),
 	  this,
@@ -153,12 +173,13 @@ dooble_address_widget::dooble_address_widget(QWidget *parent):QLineEdit(parent)
 	    50) +
      sizeHint().height());
 
-  auto frame_width = style()->pixelMetric(QStyle::PM_DefaultFrameWidth);
+  auto const frame_width = style()->pixelMetric(QStyle::PM_DefaultFrameWidth);
 
   setStyleSheet
     (QString("QLineEdit {padding-left: %1px; padding-right: %2px;}").
      arg(m_favorite->sizeHint().width() +
 	 m_information->sizeHint().width() +
+	 m_publish->sizeHint().width() +
 	 frame_width +
 	 5).
      arg(m_pull_down->sizeHint().width() + frame_width + 5));
@@ -175,6 +196,21 @@ QSize dooble_address_widget::sizeHint(void) const
 
   size.setHeight(size.height() + 5);
   return size;
+}
+
+QString dooble_address_widget::page_publication_directory_name(void)
+{
+  auto path(dooble_settings::setting("home_path").toString());
+
+  path.append(QDir::separator());
+  path.append("Dooble Published Pages");
+  QDir().mkdir(path);
+  return path;
+}
+
+bool dooble_address_widget::edited(void) const
+{
+  return m_edited;
 }
 
 bool dooble_address_widget::event(QEvent *event)
@@ -249,7 +285,7 @@ void dooble_address_widget::dropEvent(QDropEvent *event)
 {
   if(event && event->mimeData())
     {
-      QUrl url(event->mimeData()->text());
+      QUrl const url(event->mimeData()->text());
 
       if(!url.isEmpty() && url.isValid())
 	{
@@ -293,8 +329,8 @@ void dooble_address_widget::keyPressEvent(QKeyEvent *event)
 
 void dooble_address_widget::prepare_containers_for_url(const QUrl &url)
 {
-  auto icon_set(dooble_settings::setting("icon_set").toString());
-  auto use_material_icons(dooble_settings::use_material_icons());
+  auto const icon_set(dooble_settings::setting("icon_set").toString());
+  auto const use_material_icons(dooble_settings::use_material_icons());
 
   if(url.isEmpty() || !url.isValid())
     {
@@ -309,6 +345,7 @@ void dooble_address_widget::prepare_containers_for_url(const QUrl &url)
 	(QIcon::fromTheme(use_material_icons + "help-about",
 			  QIcon(QString(":/%1/18/information.png").
 				arg(icon_set))));
+      m_publish->setEnabled(false);
     }
   else
     {
@@ -336,13 +373,14 @@ void dooble_address_widget::prepare_containers_for_url(const QUrl &url)
 	(QIcon::fromTheme(use_material_icons + "help-about",
 			  QIcon(QString(":/%1/18/information.png").
 				arg(icon_set))));
+      m_publish->setEnabled(true);
     }
 }
 
 void dooble_address_widget::prepare_icons(void)
 {
-  auto icon_set(dooble_settings::setting("icon_set").toString());
-  auto use_material_icons(dooble_settings::use_material_icons());
+  auto const icon_set(dooble_settings::setting("icon_set").toString());
+  auto const use_material_icons(dooble_settings::use_material_icons());
 
   m_favorite->setIcon
     (QIcon::fromTheme(use_material_icons + "emblem-default",
@@ -350,6 +388,9 @@ void dooble_address_widget::prepare_icons(void)
   m_information->setIcon
     (QIcon::fromTheme(use_material_icons + "help-about",
 		      QIcon(QString(":/%1/18/information.png").arg(icon_set))));
+  m_publish->setIcon
+    (QIcon::fromTheme(use_material_icons + "document-save",
+		      QIcon(QString(":/%1/48/save.png").arg(icon_set))));
   m_pull_down->setIcon
      (QIcon::fromTheme(use_material_icons + "go-down",
 		       QIcon(QString(":/%1/18/pulldown.png").arg(icon_set))));
@@ -357,25 +398,30 @@ void dooble_address_widget::prepare_icons(void)
 
 void dooble_address_widget::resizeEvent(QResizeEvent *event)
 {
-  auto frame_width = style()->pixelMetric(QStyle::PM_DefaultFrameWidth);
-  auto size1(m_favorite->sizeHint());
-  auto size2(m_information->sizeHint());
-  auto size3(m_pull_down->sizeHint());
+  QLineEdit::resizeEvent(event);
+
+  auto const frame_width = style()->pixelMetric(QStyle::PM_DefaultFrameWidth);
+  auto const size1(m_favorite->sizeHint());
+  auto const size2(m_information->sizeHint());
+  auto const size3(m_publish->sizeHint());
+  auto const size4(m_pull_down->sizeHint());
   int d = 0;
 
   d = (rect().height() - (size1.height() - size1.height() % 2)) / 2;
-  m_favorite->move(frame_width - rect().left() + size2.width() + 5,
-		   rect().top() + d);
+  m_favorite->move
+    (frame_width - rect().left() + size2.width() + 5, rect().top() + d);
   d = (rect().height() - (size2.height() - size2.height() % 2)) / 2;
   m_information->move(frame_width - rect().left() + 5, rect().top() + d);
   d = (rect().height() - (size3.height() - size3.height() % 2)) / 2;
+  m_publish->move
+    (frame_width - rect().left() + size1.width() + size2.width() + 5,
+     rect().top() + d);
+  d = (rect().height() - (size4.height() - size4.height() % 2)) / 2;
   m_pull_down->move
-    (rect().right() - frame_width - size3.width() - 5, rect().top() + d);
+    (rect().right() - frame_width - size4.width() - 5, rect().top() + d);
 
   if(selectedText().isEmpty())
     setCursorPosition(0);
-
-  QLineEdit::resizeEvent(event);
 }
 
 void dooble_address_widget::setText(const QString &text)
@@ -383,7 +429,7 @@ void dooble_address_widget::setText(const QString &text)
   QLineEdit::setText(text.trimmed());
   setCursorPosition(0);
 
-  auto url(QUrl::fromUserInput(text));
+  auto const url(QUrl::fromUserInput(text));
 
   if(!url.isEmpty() && url.isValid())
     {
@@ -391,7 +437,7 @@ void dooble_address_widget::setText(const QString &text)
       QTextCharFormat format;
       QTextLayout::FormatRange all_format_range;
       QTextLayout::FormatRange host_format_range;
-      auto host(url.host());
+      auto const host(url.host());
 
       format.setFontHintingPreference(QFont::PreferFullHinting);
       format.setFontStyleStrategy(QFont::PreferAntialias);
@@ -411,7 +457,11 @@ void dooble_address_widget::setText(const QString &text)
     }
 
   prepare_containers_for_url(url);
-  setToolTip(QLineEdit::text());
+}
+
+void dooble_address_widget::set_edited(const bool state)
+{
+  m_edited = state;
 }
 
 void dooble_address_widget::set_item_icon(const QIcon &icon, const QUrl &url)
@@ -426,10 +476,10 @@ void dooble_address_widget::set_text_format
 
   foreach(auto const format, formats)
     {
-      auto attribute_type = QInputMethodEvent::TextFormat;
-      auto length = format.length;
-      auto start = format.start;
-      const QVariant &value(format.format);
+      QVariant const value(format.format);
+      auto const attribute_type = QInputMethodEvent::TextFormat;
+      auto const length = format.length;
+      auto const start = format.start;
 
       attributes << QInputMethodEvent::Attribute(attribute_type,
 						 start,
@@ -470,8 +520,8 @@ void dooble_address_widget::slot_favorite_changed(const QUrl &url, bool state)
 
   if(m_view->url() == url)
     {
-      auto icon_set(dooble_settings::setting("icon_set").toString());
-      auto use_material_icons(dooble_settings::use_material_icons());
+      auto const icon_set(dooble_settings::setting("icon_set").toString());
+      auto const use_material_icons(dooble_settings::use_material_icons());
 
       if(state)
 	{
@@ -494,8 +544,8 @@ void dooble_address_widget::slot_favorite_changed(const QUrl &url, bool state)
 
 void dooble_address_widget::slot_favorites_cleared(void)
 {
-  auto icon_set(dooble_settings::setting("icon_set").toString());
-  auto use_material_icons(dooble_settings::use_material_icons());
+  auto const icon_set(dooble_settings::setting("icon_set").toString());
+  auto const use_material_icons(dooble_settings::use_material_icons());
 
   m_favorite->setIcon
     (QIcon::fromTheme(use_material_icons + "emblem-default",
@@ -511,6 +561,7 @@ void dooble_address_widget::slot_favorites_populated(void)
 void dooble_address_widget::slot_load_finished(bool ok)
 {
   Q_UNUSED(ok);
+  m_publish->setEnabled(true);
 
   if(m_view)
     prepare_containers_for_url(m_view->url());
@@ -518,10 +569,12 @@ void dooble_address_widget::slot_load_finished(bool ok)
 
 void dooble_address_widget::slot_load_started(void)
 {
+  m_publish->setEnabled(false);
+
   if(m_view)
     {
-      auto url1(QUrl::fromUserInput(text()));
-      auto url2(m_view->url());
+      auto const url1(QUrl::fromUserInput(text()));
+      auto const url2(m_view->url());
 
       /*
       ** Prepare the containers for a future URL.
@@ -575,9 +628,9 @@ void dooble_address_widget::slot_show_site_information_menu(void)
     return;
 
   QMenu menu(this);
-  auto icon_set(dooble_settings::setting("icon_set").toString());
-  auto url(dooble_ui_utilities::simplified_url(m_view->url()));
-  auto use_material_icons(dooble_settings::use_material_icons());
+  auto const icon_set(dooble_settings::setting("icon_set").toString());
+  auto const url(dooble_ui_utilities::simplified_url(m_view->url()));
+  auto const use_material_icons(dooble_settings::use_material_icons());
 
   if(dooble_certificate_exceptions_menu_widget::has_exception(url))
     menu.addAction
@@ -617,12 +670,12 @@ void dooble_address_widget::slot_url_changed(const QUrl &url)
 
   auto length = url.toString().length();
 
-  if(length >
-     static_cast<decltype(length)> (dooble::Limits::MAXIMUM_URL_LENGTH))
+  if(length > static_cast<decltype(length)> (dooble::Limits::
+					     MAXIMUM_URL_LENGTH))
     return;
 
-  auto icon_set(dooble_settings::setting("icon_set").toString());
-  auto use_material_icons(dooble_settings::use_material_icons());
+  auto const icon_set(dooble_settings::setting("icon_set").toString());
+  auto const use_material_icons(dooble_settings::use_material_icons());
 
   if(dooble::s_history->is_favorite(m_view->url()))
     {

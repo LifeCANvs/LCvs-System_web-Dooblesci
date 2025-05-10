@@ -28,6 +28,7 @@
 #ifndef dooble_h
 #define dooble_h
 
+#include <QElapsedTimer>
 #include <QFuture>
 #include <QLocalServer>
 #include <QShortcut>
@@ -85,7 +86,11 @@ class dooble: public QMainWindow
     };
 
   dooble(QWidget *widget);
-  dooble(const QList<QUrl> &urls, bool is_private, bool attach);
+  dooble(const QList<QUrl> &urls,
+	 bool attach,
+	 bool disable_javascript,
+	 bool is_private,
+	 int reload_periodically);
   dooble(dooble_page *page);
   dooble(dooble_web_engine_view *view);
   ~dooble();
@@ -95,6 +100,8 @@ class dooble: public QMainWindow
   bool is_private(void) const;
   dooble_page *current_page(void) const;
   dooble_page *new_page(const QUrl &url, bool is_private);
+  static QElapsedTimer s_elapsed_timer;
+  static QPointer<QWebEngineProfile> s_default_web_engine_profile;
   static QPointer<dooble_about> s_about;
   static QPointer<dooble_accepted_or_blocked_domains>
     s_accepted_or_blocked_domains;
@@ -128,6 +135,7 @@ class dooble: public QMainWindow
  public slots:
   void show(void);
   void showFullScreen(void);
+  void showNormal(void);
 
  protected:
   void closeEvent(QCloseEvent *event);

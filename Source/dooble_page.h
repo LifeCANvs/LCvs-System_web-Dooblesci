@@ -31,6 +31,10 @@
 #include <QPointer>
 #include <QTimer>
 #include <QWebEnginePage>
+#if (QT_VERSION < QT_VERSION_CHECK(6, 8, 0))
+#else
+#include <QWebEnginePermission>
+#endif
 #include <QWebEngineSettings>
 
 #include "dooble_settings.h"
@@ -135,6 +139,7 @@ class dooble_page: public QWidget
   void find_text(QWebEnginePage::FindFlags find_flags, const QString &text);
   void go_to_backward_item(int index);
   void go_to_forward_item(int index);
+  void move_buttons(void);
   void prepare_icons(void);
   void prepare_progress_label_position(bool process_events = true);
   void prepare_shortcuts(void);
@@ -150,9 +155,10 @@ class dooble_page: public QWidget
   void slot_about_to_show_view_menu(void);
   void slot_accepted_or_blocked_add_exception(void);
   void slot_accepted_or_blocked_clicked(void);
+  void slot_address_edited(const QString &text);
   void slot_always_allow_javascript_popup(void);
-  void slot_authentication_required(const QUrl &url,
-				    QAuthenticator *authenticator);
+  void slot_authentication_required
+    (const QUrl &url, QAuthenticator *authenticator);
   void slot_clear_visited_links(void);
   void slot_close_javascript_popup_exception_frame(void);
   void slot_create_dialog_request(dooble_web_engine_view *view);
@@ -168,10 +174,20 @@ class dooble_page: public QWidget
   void slot_favorite_changed(const QUrl &url, bool state);
   void slot_feature_permission_allow(void);
   void slot_feature_permission_deny(void);
+#if (QT_VERSION < QT_VERSION_CHECK(6, 8, 0))
   void slot_feature_permission_request_canceled
     (const QUrl &security_origin, QWebEnginePage::Feature feature);
-  void slot_feature_permission_requested(const QUrl &security_origin,
-					 QWebEnginePage::Feature feature);
+  void slot_feature_permission_requested
+    (const QUrl &security_origin, QWebEnginePage::Feature feature);
+#else
+  void slot_feature_permission_request_canceled
+    (const QUrl &security_origin,
+     QWebEnginePermission::PermissionType feature);
+  void slot_feature_permission_requested
+    (const QUrl &security_origin,
+     QWebEnginePermission::PermissionType feature,
+     QWebEnginePermission::State &state);
+#endif
   void slot_find_next(void);
   void slot_find_previous(void);
   void slot_find_text_edited(const QString &text);
@@ -196,12 +212,19 @@ class dooble_page: public QWidget
   void slot_only_now_allow_javascript_popup(void);
   void slot_open_link(const QUrl &url);
   void slot_open_link(void);
+#if (QT_VERSION < QT_VERSION_CHECK(6, 8, 0))
+#else
+  void slot_permission_requested(QWebEnginePermission permission);
+#endif
   void slot_prepare_backward_menu(void);
   void slot_prepare_forward_menu(void);
   void slot_prepare_reload_menu(void);
-  void slot_proxy_authentication_required(const QUrl &url,
-					  QAuthenticator *authenticator,
-					  const QString &proxy_host);
+  void slot_proxy_authentication_required
+    (const QUrl &url,
+     QAuthenticator *authenticator,
+     const QString &proxy_host);
+  void slot_publish(void);
+  void slot_publish_html(const QString &html);
   void slot_reload(void);
   void slot_reload_bypass_cache(void);
   void slot_reload_or_stop(void);
@@ -236,8 +259,10 @@ class dooble_page: public QWidget
   void decreased_page_brightness(bool state);
   void dooble_credentials_authenticated(bool state);
   void export_as_png(void);
+  void html_ready(const QString &html);
   void iconChanged(const QIcon &icon);
   void javascript_allow_popup_exception(const QUrl &url);
+  void javascript_disable(const QUrl &url, bool state);
   void loadFinished(bool ok);
   void loadStarted(void);
   void new_private_window(void);

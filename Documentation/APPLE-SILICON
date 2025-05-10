@@ -1,0 +1,11 @@
+Apple Silicon requires signed software and therefore a bundled
+package will be considered tarnished.  We recommend a Homebrew
+solution. Please visit https://brew.sh and install Homebrew.
+
+> brew install git
+> brew install qt
+> git clone https://github.com/textbrowser/dooble dooble.d
+> cd dooble.d
+> qmake
+> make
+> open ./Dooble.app

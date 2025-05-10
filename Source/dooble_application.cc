@@ -37,11 +37,11 @@ dooble_application::dooble_application(int &argc, char **argv):
   QApplication(argc, argv)
 {
   m_application_locked = false;
-  m_translator = nullptr;
+  m_default_font = QApplication::font();
 
-  auto font(this->font());
-  auto string
+  auto const string
     (dooble_settings::setting("display_application_font").toString().trimmed());
+  auto font(this->font());
 
   if(string.isEmpty() || !font.fromString(string))
     font = QApplication::font();
@@ -55,9 +55,14 @@ dooble_application::dooble_application(int &argc, char **argv):
   setWindowIcon(QIcon(":/Logo/dooble.png"));
 }
 
+QFont dooble_application::default_font(void) const
+{
+  return m_default_font;
+}
+
 QString dooble_application::style_name(void) const
 {
-  static auto style_name
+  static auto const style_name
     (style() ? style()->objectName().toLower().trimmed() : "");
 
   return style_name;
@@ -76,8 +81,7 @@ void dooble_application::install_translator(void)
   if(dooble_settings::setting("language_index").toInt() == 1) // System
     {
       QString path("");
-      auto name(QLocale::system().name());
-      auto variable(qgetenv("DOOBLE_TRANSLATIONS_PATH").trimmed());
+      auto const variable(qgetenv("DOOBLE_TRANSLATIONS_PATH").trimmed());
 
       if(!variable.isEmpty())
 	path = QString::fromLocal8Bit(variable.constData());
@@ -85,29 +89,29 @@ void dooble_application::install_translator(void)
       if(path.isEmpty())
 	path = QDir::currentPath() + QDir::separator() + "Translations";
 
+      auto const absolute_path(QFileInfo(path).absoluteFilePath());
+
+      qDebug() << tr("Dooble will search the directory %1 for translation "
+		     "files.").arg(absolute_path);
       m_translator = new QTranslator(this);
 
-      if(m_translator->load("dooble_" + name, path))
+      if(m_translator->load(QLocale(), "dooble", "_", absolute_path, ".qm"))
 	{
 	  if(!installTranslator(m_translator))
-	    qDebug() << "Translator m_translator was not installed.";
+	    qDebug() << tr("Translator m_translator was not installed.");
 	}
       else
-	qDebug() << "Translation file"
-		 << "dooble_" + name + ".qm"
-		 << "was not found.";
+	qDebug() << tr("Could not load a Dooble translation file.");
 
       auto other = new QTranslator(this);
 
-      if(other->load("qtbase_" + name, path))
+      if(other->load(QLocale(), "qtbase", "_", absolute_path, ".qm"))
 	{
 	  if(!installTranslator(other))
-	    qDebug() << "Translator other was not installed.";
+	    qDebug() << tr("Translator other was not installed.");
 	}
       else
-	qDebug() << "Translation file"
-		 << "qtbase_" + name + ".qm"
-		 << "was not found.";
+	qDebug() << tr("Could not load a Qt translation file.");
     }
 }
 

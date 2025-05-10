@@ -133,8 +133,8 @@ void dooble_popup_menu::hide_for_non_web_page(bool state)
 
 void dooble_popup_menu::prepare_icons(void)
 {
-  auto icon_set(dooble_settings::setting("icon_set").toString());
-  auto use_material_icons(dooble_settings::use_material_icons());
+  auto const icon_set(dooble_settings::setting("icon_set").toString());
+  auto const use_material_icons(dooble_settings::use_material_icons());
 
   m_ui.authenticate->setIcon
     (QIcon::fromTheme(use_material_icons + "dialog-password",
@@ -255,7 +255,7 @@ void dooble_popup_menu::slot_tool_button_clicked(void)
 	accept();
     }
   else if(m_ui.new_private_window == sender())
-    (new dooble(QList<QUrl> () << QUrl(), true, false))->show();
+    (new dooble(QList<QUrl> () << QUrl(), false, false, true, -1))->show();
   else if(m_ui.new_tab == sender())
     {
       auto d = find_parent_dooble();
@@ -267,7 +267,7 @@ void dooble_popup_menu::slot_tool_button_clicked(void)
 	accept();
     }
   else if(m_ui.new_window == sender())
-    (new dooble(QList<QUrl> () << QUrl(), false, false))->show();
+    (new dooble(QList<QUrl> () << QUrl(), false, false, false, -1))->show();
   else if(m_ui.print == sender())
     {
       auto d = find_parent_dooble();

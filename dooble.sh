@@ -1,9 +1,18 @@
 #!/usr/bin/env sh
+
 # Alexis Megas.
 
 dictionaries=qtwebengine_dictionaries
+
 export AA_ENABLEHIGHDPISCALING=1
 export AA_USEHIGHDPIPIXMAPS=1
+
+if [ ! -z "$(which qt6ct)" ]
+then
+    echo "Exporting QT_QPA_PLATFORMTHEME as qt6ct."
+
+    export QT_QPA_PLATFORMTHEME=qt6ct
+fi
 
 # Maximum of 50.
 
@@ -29,6 +38,8 @@ export QT_X11_NO_MITSHM=1
 if [ -r ./Dooble ] && [ -x ./Dooble ]
 then
     echo "Launching a local Dooble."
+
+    export DOOBLE_TRANSLATIONS_PATH=Translations
     export QTWEBENGINE_DICTIONARIES_PATH=$dictionaries
 
     if [ -r ./Lib ]
@@ -41,25 +52,29 @@ then
 	export QT_PLUGIN_PATH=plugins
     fi
 
-    exec ./Dooble "$@"
+    ./Dooble "$@"
     exit $?
 elif [ -r /opt/dooble/Dooble ] && [ -x /opt/dooble/Dooble ]
 then
     echo "Launching an official Dooble."
+
     export DOOBLE_TRANSLATIONS_PATH=/opt/dooble/Translations
     export LD_LIBRARY_PATH=/opt/dooble/Lib
     export QTWEBENGINE_DICTIONARIES_PATH=/opt/dooble/$dictionaries
     export QT_PLUGIN_PATH=/opt/dooble/plugins
-    cd /opt/dooble && exec ./Dooble "$@"
+
+    cd /opt/dooble && ./Dooble "$@"
     exit $?
 elif [ -r /usr/local/dooble/Dooble ] && [ -x /usr/local/dooble/Dooble ]
 then
     echo "Launching an official Dooble."
+
     export DOOBLE_TRANSLATIONS_PATH=/usr/local/dooble/Translations
     export LD_LIBRARY_PATH=/usr/local/dooble/Lib
     export QTWEBENGINE_DICTIONARIES_PATH=/usr/local/dooble/$dictionaries
     export QT_PLUGIN_PATH=/usr/local/dooble/plugins
-    cd /usr/local/dooble && exec ./Dooble "$@"
+
+    cd /usr/local/dooble && ./Dooble "$@"
     exit $?
 else
     echo "Cannot find Dooble. Please contact your lovely administrator."
